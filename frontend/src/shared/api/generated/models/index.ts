@@ -7,6 +7,7 @@ export * from './DayOfWeek';
 export * from './ErrorResponse';
 export * from './EventType';
 export * from './EventTypeInput';
+export * from './GuestBooking';
 export * from './HealthResponse';
 export * from './Schedule';
 export * from './TimeSlot';

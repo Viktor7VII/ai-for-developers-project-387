@@ -23,6 +23,20 @@ final class BookingMapper {
 				.createdAt(utc(booking.getCreatedAt()));
 	}
 
+	/** Booking as returned to the guest: a separate model, so owner-only data is never exposed publicly. */
+	static com.hexlet.backend.api.model.GuestBooking toGuestDto(Booking booking) {
+		return new com.hexlet.backend.api.model.GuestBooking()
+				.id(booking.getId())
+				.eventTypeId(booking.getEventType().getId())
+				.eventTypeTitle(booking.getEventType().getTitle())
+				.guestName(booking.getGuestName())
+				.guestEmail(booking.getGuestEmail())
+				.startAt(utc(booking.getStartAt()))
+				.endAt(utc(booking.getEndAt()))
+				.status(com.hexlet.backend.api.model.BookingStatus.fromValue(booking.getStatus().name()))
+				.createdAt(utc(booking.getCreatedAt()));
+	}
+
 	static com.hexlet.backend.api.model.TimeSlot toDto(TimeSlot slot) {
 		return new com.hexlet.backend.api.model.TimeSlot()
 				.startAt(utc(slot.startAt()))

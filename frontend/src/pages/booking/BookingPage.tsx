@@ -21,7 +21,7 @@ import dayjs from 'dayjs'
 import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router'
 import { publicBookingApi } from '../../shared/api/client'
-import type { Booking, EventType, TimeSlot } from '../../shared/api/generated'
+import type { EventType, GuestBooking, TimeSlot } from '../../shared/api/generated'
 import {
   browserTimeZone,
   formatDuration,
@@ -79,7 +79,7 @@ export function BookingPage() {
 
 function BookingFlow({ eventType }: { eventType: EventType }) {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
-  const [booking, setBooking] = useState<Booking | null>(null)
+  const [booking, setBooking] = useState<GuestBooking | null>(null)
   const [conflict, setConflict] = useState(false)
   // Incremented to force reloading slots, e.g. after the chosen slot was taken by someone else.
   const [reloadKey, setReloadKey] = useState(0)
@@ -265,7 +265,7 @@ interface GuestFormProps {
   eventType: EventType
   slot: TimeSlot
   onBack: () => void
-  onBooked: (booking: Booking) => void
+  onBooked: (booking: GuestBooking) => void
   onConflict: () => void
 }
 
@@ -341,7 +341,7 @@ function GuestForm({ eventType, slot, onBack, onBooked, onConflict }: GuestFormP
   )
 }
 
-function Confirmation({ booking, onBookAgain }: { booking: Booking; onBookAgain: () => void }) {
+function Confirmation({ booking, onBookAgain }: { booking: GuestBooking; onBookAgain: () => void }) {
   return (
     <Stack>
       <Title order={3} c="teal">

@@ -1,7 +1,7 @@
 
 # Booking
 
-A confirmed meeting booked by a visitor.
+A confirmed meeting booked by a visitor, as shown in the owner area.
 
 ## Properties
 

@@ -12,7 +12,7 @@ All URIs are relative to *http://localhost:8080*
 
 ## publicBookingCreateBooking
 
-> Booking publicBookingCreateBooking(slug, bookingRequest)
+> GuestBooking publicBookingCreateBooking(slug, bookingRequest)
 
 
 
@@ -60,7 +60,7 @@ example().catch(console.error);
 
 ### Return type
 
-[**Booking**](Booking.md)
+[**GuestBooking**](GuestBooking.md)
 
 ### Authorization
 

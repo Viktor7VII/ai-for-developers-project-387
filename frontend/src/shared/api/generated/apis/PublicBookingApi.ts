@@ -14,11 +14,6 @@
 
 import * as runtime from '../runtime';
 import {
-    type Booking,
-    BookingFromJSON,
-    BookingToJSON,
-} from '../models/Booking';
-import {
     type BookingRequest,
     BookingRequestFromJSON,
     BookingRequestToJSON,
@@ -33,6 +28,11 @@ import {
     EventTypeFromJSON,
     EventTypeToJSON,
 } from '../models/EventType';
+import {
+    type GuestBooking,
+    GuestBookingFromJSON,
+    GuestBookingToJSON,
+} from '../models/GuestBooking';
 import {
     type TimeSlot,
     TimeSlotFromJSON,
@@ -109,17 +109,17 @@ export class PublicBookingApi extends runtime.BaseAPI {
     /**
      * Book a slot. Availability is re-checked on the server; 409 is returned if the slot is taken, in the past or outside the schedule.
      */
-    async publicBookingCreateBookingRaw(requestParameters: PublicBookingCreateBookingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Booking>> {
+    async publicBookingCreateBookingRaw(requestParameters: PublicBookingCreateBookingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GuestBooking>> {
         const requestOptions = await this.publicBookingCreateBookingRequestOpts(requestParameters);
         const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => BookingFromJSON(jsonValue));
+        return new runtime.JSONApiResponse(response, (jsonValue) => GuestBookingFromJSON(jsonValue));
     }
 
     /**
      * Book a slot. Availability is re-checked on the server; 409 is returned if the slot is taken, in the past or outside the schedule.
      */
-    async publicBookingCreateBooking(requestParameters: PublicBookingCreateBookingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Booking> {
+    async publicBookingCreateBooking(requestParameters: PublicBookingCreateBookingRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<GuestBooking> {
         const response = await this.publicBookingCreateBookingRaw(requestParameters, initOverrides);
         return await response.value();
     }
