@@ -22,7 +22,7 @@ import {
 } from './BookingStatus';
 
 /**
- * A confirmed meeting booked by a visitor.
+ * A confirmed meeting booked by a visitor, as shown in the owner area.
  * @export
  * @interface Booking
  */

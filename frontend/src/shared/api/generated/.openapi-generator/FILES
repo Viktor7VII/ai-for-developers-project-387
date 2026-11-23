@@ -14,6 +14,7 @@ docs/ErrorResponse.md
 docs/EventType.md
 docs/EventTypeInput.md
 docs/EventTypesApi.md
+docs/GuestBooking.md
 docs/HealthResponse.md
 docs/PublicBookingApi.md
 docs/Schedule.md
@@ -28,6 +29,7 @@ models/DayOfWeek.ts
 models/ErrorResponse.ts
 models/EventType.ts
 models/EventTypeInput.ts
+models/GuestBooking.ts
 models/HealthResponse.ts
 models/Schedule.ts
 models/TimeSlot.ts

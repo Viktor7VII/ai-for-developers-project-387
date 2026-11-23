@@ -221,7 +221,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Booking'
+                $ref: '#/components/schemas/GuestBooking'
         '400':
           description: 'Bad request: validation failed.'
           content:
@@ -355,7 +355,7 @@ components:
         createdAt:
           type: string
           format: date-time
-      description: A confirmed meeting booked by a visitor.
+      description: A confirmed meeting booked by a visitor, as shown in the owner area.
     BookingRequest:
       type: object
       required:
@@ -463,6 +463,45 @@ components:
           maximum: 720
           description: Meeting duration in minutes.
       description: Event type data sent by the owner when creating or updating an event type.
+    GuestBooking:
+      type: object
+      required:
+        - id
+        - eventTypeId
+        - eventTypeTitle
+        - guestName
+        - guestEmail
+        - startAt
+        - endAt
+        - status
+        - createdAt
+      properties:
+        id:
+          type: integer
+          format: int64
+        eventTypeId:
+          type: integer
+          format: int64
+        eventTypeTitle:
+          type: string
+        guestName:
+          type: string
+        guestEmail:
+          type: string
+        startAt:
+          type: string
+          format: date-time
+        endAt:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        createdAt:
+          type: string
+          format: date-time
+      description: |-
+        A confirmed meeting as returned to the guest who booked it.
+        Kept separate from the owner model so that owner-only booking data never reaches guests.
     HealthResponse:
       type: object
       required:

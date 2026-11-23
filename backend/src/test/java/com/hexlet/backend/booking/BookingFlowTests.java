@@ -164,6 +164,23 @@ class BookingFlowTests {
 	}
 
 	@Test
+	void guestBookingResponseContainsOnlyGuestFields() throws Exception {
+		// The guest response is a separate model: owner-only booking data must never appear in it.
+		book("consultation", "2026-11-16T09:00:00Z")
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.*", hasSize(9)))
+				.andExpect(jsonPath("$.id").isNumber())
+				.andExpect(jsonPath("$.eventTypeId").isNumber())
+				.andExpect(jsonPath("$.eventTypeTitle").value("Консультация"))
+				.andExpect(jsonPath("$.guestName").value("Иван Петров"))
+				.andExpect(jsonPath("$.guestEmail").value("ivan@example.com"))
+				.andExpect(jsonPath("$.startAt").value("2026-11-16T09:00:00Z"))
+				.andExpect(jsonPath("$.endAt").value("2026-11-16T09:30:00Z"))
+				.andExpect(jsonPath("$.status").value("CONFIRMED"))
+				.andExpect(jsonPath("$.createdAt").value("2026-11-15T12:00:00Z"));
+	}
+
+	@Test
 	void rejectsAlreadyBookedSlot() throws Exception {
 		book("consultation", "2026-11-16T09:00:00Z").andExpect(status().isCreated());
 

@@ -184,8 +184,24 @@ model BookingRequest {
   guestEmail: string;
 }
 
-@doc("A confirmed meeting booked by a visitor.")
+@doc("A confirmed meeting booked by a visitor, as shown in the owner area.")
 model Booking {
+  id: int64;
+  eventTypeId: int64;
+  eventTypeTitle: string;
+  guestName: string;
+  guestEmail: string;
+  startAt: utcDateTime;
+  endAt: utcDateTime;
+  status: BookingStatus;
+  createdAt: utcDateTime;
+}
+
+@doc("""
+  A confirmed meeting as returned to the guest who booked it.
+  Kept separate from the owner model so that owner-only booking data never reaches guests.
+  """)
+model GuestBooking {
   id: int64;
   eventTypeId: int64;
   eventTypeTitle: string;
@@ -223,7 +239,7 @@ interface PublicBooking {
   createBooking(@path slug: string, @body booking: BookingRequest):
     | {
         @statusCode statusCode: 201;
-        @body body: Booking;
+        @body body: GuestBooking;
       }
     | BadRequestError
     | NotFoundError
