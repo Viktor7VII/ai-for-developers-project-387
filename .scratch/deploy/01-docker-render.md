@@ -1,6 +1,6 @@
 # Docker и деплой на Render
 
-Status: claimed
+Status: resolved
 
 ## Задача
 
