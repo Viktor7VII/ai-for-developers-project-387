@@ -1,6 +1,6 @@
 # Главная страница для гостя
 
-Status: ready-for-agent
+Status: resolved
 
 Итог интервью (`/grill-with-docs`). Термины — по `GLOSSARY.md`.
 
