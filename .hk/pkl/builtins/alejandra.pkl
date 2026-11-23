@@ -1,0 +1,19 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Nix"
+  description = "Alternative Nix formatter"
+  homepage = "https://github.com/kamadorueda/alejandra"
+}
+alejandra = new Config.Step {
+  glob = "**/*.nix"
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("alejandra", "--check", "{{files}}") }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command { argv = List("alejandra", "{{files}}") }
+    effect = "write"
+  }
+}

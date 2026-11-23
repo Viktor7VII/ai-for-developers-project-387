@@ -1,0 +1,93 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Go"
+  description = "Fast Go linter"
+  mise_tools = List("revive")
+}
+revive = new Config.Step {
+  glob = "**/*.go"
+  workspace_indicator = "go.mod"
+  dir = "{{workspace}}"
+  // revive exits 0 even when it reports findings unless -set_exit_status is
+  // passed.
+  check = new Config.CommandSpec {
+    command = "revive -set_exit_status ./..."
+    effect = "write"
+  }
+  // revive prints `path:line:column: message` by default
+  diagnostic_format = "gcc"
+  tests {
+    ["check good file"] {
+      run = "check"
+      tmpdir = true
+      write = new Mapping<String, String> {
+        ["go.mod"] =
+          """
+            module example.com/test
+
+            go 1.21
+          """
+        ["main.go"] =
+          """
+            // Package main is a test package.
+            package main
+
+            func main() {}
+          """
+      }
+      expect { code = 0 }
+    }
+    ["check bad file"] {
+      run = "check"
+      tmpdir = true
+      write = new Mapping<String, String> {
+        ["go.mod"] =
+          """
+            module example.com/test
+
+            go 1.21
+          """
+        // Missing the package comment revive requires.
+        ["main.go"] =
+          """
+            package main
+
+            func main() {}
+          """
+      }
+      expect { code = 1 }
+    }
+    ["check bad file reports diagnostics"] {
+      run = "check"
+      tmpdir = true
+      write = new Mapping<String, String> {
+        ["go.mod"] =
+          """
+          module example.com/test
+
+          go 1.21
+          """
+        ["main.go"] =
+          """
+          package main
+
+          func main() {}
+          """
+      }
+      expect {
+        code = 1
+        diagnostics {
+          new {
+            path = "main.go"
+            line = 1
+            column = 1
+            severity = "error"
+            message = "should have a package comment"
+          }
+        }
+      }
+    }
+  }
+}

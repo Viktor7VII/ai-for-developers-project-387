@@ -1,0 +1,82 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+import "./test/helpers.pkl"
+
+@Builtins.meta {
+  category = "Package"
+  description = "create or update aqua checksums"
+  project_indicators {
+    new { file = "aqua-checksums.json" }
+    new { file = "aqua/aqua-checksums.json" }
+    new { file = ".aqua/aqua-checksums.json" }
+  }
+  mise_tools = List("aqua")
+}
+const aqua_update_checksum = new Config.Step {
+  glob =
+    List(
+      "{aqua,.aqua}.{yml,yaml}",
+      "{aqua,.aqua}/**/*.{yml,yaml}",
+      "aqua-checksums.json",
+      "{aqua,.aqua}/aqua-checksums.json",
+    )
+  fix = new Config.CommandSpec {
+    command = "aqua update-checksum --prune"
+    effect = "write"
+  }
+  tests {
+    local const testMaker = new helpers.TestMaker {
+      filename = "aqua-checksums.json"
+      extra_files = new Mapping<String, String> {
+        // Don't use `aqua init`
+        // it doesn't pin the aqua-registry version, making tests unreliable.
+        ["aqua.yaml"] =
+          """
+          ---
+          # yaml-language-server: $schema=https://raw.githubusercontent.com/aquaproj/aqua/main/json-schema/aqua-yaml.json
+          # aqua - Declarative CLI Version Manager
+          # https://aquaproj.github.io/
+          # checksum:
+          #   enabled: true
+          #   require_checksum: true
+          #   supported_envs:
+          #   - all
+          registries:
+          - type: standard
+            ref: v4.523.0  # renovate: depName=aquaproj/aqua-registry
+          packages:
+          """
+      }
+    }
+    local const good =
+      """
+      {
+        "checksums": [
+          {
+            "id": "registries/github_content/github.com/aquaproj/aqua-registry/v4.523.0/registry.yaml",
+            "checksum": "14BFA633212CF508D45DE47AD17CF666E009BCA351787E28F41D63FFD5B99D8B",
+            "algorithm": "sha256"
+          }
+        ]
+      }
+      """
+    ["fix bad file"] = new Config.StepTest {
+      run = "fix"
+      tmpdir = true
+      write = new Mapping<String, String> {
+        [testMaker.filename] = "{}"
+        ...testMaker.extra_files
+      }
+      // aqua emits sha256 or sha512 for this registry depending on the platform.
+      after =
+        """
+        jq -e '
+          .checksums[0] |
+          (.algorithm == "sha256" and .checksum == "14BFA633212CF508D45DE47AD17CF666E009BCA351787E28F41D63FFD5B99D8B") or
+          (.algorithm == "sha512" and .checksum == "F5BD5D893B9901B0E0C267651154350D5C0F4A9D1DA0EB82103BF0A2AE28ACB42AFC2F83E32A1B8A2EE2EDE21D905ED71759C7AC08A33AD2129C53F86539FBBF")
+        ' aqua-checksums.json
+        """
+    }
+    ["fix good file"] = testMaker.fixPass(good, good)
+  }
+}

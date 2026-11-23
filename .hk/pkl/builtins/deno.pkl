@@ -1,0 +1,23 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "JavaScript/TypeScript"
+  description = "Deno formatter"
+  project_indicators {
+    new { file = "deno.json" }
+    new { file = "deno.jsonc" }
+  }
+  mise_tools = List("deno")
+}
+deno = new Config.Step {
+  glob = List("**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("deno", "fmt", "--check", "{{files}}") }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command { argv = List("deno", "fmt", "{{files}}") }
+    effect = "write"
+  }
+}

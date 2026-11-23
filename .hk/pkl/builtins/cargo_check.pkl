@@ -1,0 +1,68 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+import "./test/helpers.pkl"
+
+@Builtins.meta {
+  category = "Rust"
+  description = "Fast Rust type checking"
+  mise_tools = List("rust")
+}
+cargo_check = new Config.Step {
+  glob = "**/*.rs"
+  check = new Config.CommandSpec {
+    command = "cargo check --quiet"
+    effect = "write"
+  }
+  // rustc's `error[E0425]: message` / ` --> path:line:col` output
+  diagnostic_format = "rustc"
+  fix = new Config.CommandSpec {
+    command = "cargo fix --allow-dirty --allow-staged --quiet"
+    effect = "write"
+  }
+  env {
+    ["CARGO_TERM_COLOR"] = "{% if color %}always{% else %}never{% endif %}"
+    // Treat warnings as errors while keeping `check` and `fix` in parity.
+    // Cargo stabilized build.warnings in 1.97.
+    ["CARGO_BUILD_WARNINGS"] = "deny"
+  }
+  tests {
+    local const testMaker = new helpers.TestMaker {
+      filename = "src/main.rs"
+      before = "git init"
+      extra_files = new Mapping<String, String> {
+        ["Cargo.toml"] =
+          """
+            [package]
+            name = "test"
+            version = "0.1.0"
+            edition = "2021"
+          """
+      }
+    }
+    local const checkBefore =
+      """
+        pub fn main() {
+          missing_function();
+        }
+      """
+    local const fixBefore = "use std::{fmt};\n\npub fn main() {}\n"
+    local const after = "\npub fn main() {}\n"
+    ["check bad file"] = testMaker.checkFail(checkBefore, 101)
+    ["check good file"] = testMaker.checkPass(after)
+    ["fix bad file"] = testMaker.fixPass(fixBefore, after)
+    ["fix good file"] = testMaker.fixPass(after, after)
+    ["check bad file reports diagnostics"] =
+      testMaker.checkDiagnostics(
+        checkBefore,
+        101,
+        List(new Config.StepTestDiagnostic {
+          path = "src/main.rs"
+          line = 2
+          column = 5
+          severity = "error"
+          rule = "E0425"
+          message = "cannot find function `missing_function`"
+        }),
+      )
+  }
+}

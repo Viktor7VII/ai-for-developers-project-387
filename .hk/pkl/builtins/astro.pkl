@@ -1,0 +1,23 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Other Languages"
+  description = "Astro component checker"
+  project_indicators {
+    new { file = "astro.config.mjs" }
+    new { file = "astro.config.ts" }
+    new { file = "astro.config.js" }
+    new { file = "astro.config.cjs" }
+    new { file = "astro.config.mts" }
+    new { file = "package.json"; contains = "\"astro\"" }
+  }
+  homepage = "https://docs.astro.build/en/reference/cli-reference/"
+}
+astro = new Config.Step {
+  glob = "**/*.astro"
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("astro", "check", "{{files}}") }
+    effect = "write"
+  }
+}

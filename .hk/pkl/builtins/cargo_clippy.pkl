@@ -1,0 +1,30 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Rust"
+  description = "Rust linter"
+  project_indicators {
+    new { file = "Cargo.toml" }
+  }
+  mise_tools = List("rust")
+}
+cargo_clippy = new Config.Step {
+  glob = "**/*.rs"
+  workspace_indicator = "Cargo.toml"
+  check = new Config.CommandSpec {
+    command = "cargo clippy --manifest-path {{workspace_indicator}} --quiet"
+    effect = "write"
+  }
+  // rustc's `warning: message` / ` --> path:line:col` output; the lint is the rule
+  diagnostic_format = "rustc"
+  fix = new Config.CommandSpec {
+    command =
+      "cargo clippy --manifest-path {{workspace_indicator}} --fix --allow-dirty --allow-staged --quiet"
+    effect = "write"
+  }
+  check_first = false
+  env {
+    ["CARGO_TERM_PROGRESS_WHEN"] = "never"
+  }
+}

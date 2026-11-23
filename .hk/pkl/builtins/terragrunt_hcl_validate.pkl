@@ -1,0 +1,130 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+/// Requires terragrunt 1.0.8+.
+///
+/// `hcl validate` validates every unit below the working directory, so each
+/// selected file adds two `--filter`s: its directory (if it is a unit config)
+/// and `reading=` (units that read it). Non-matching filters are ignored, so no
+/// naming convention is assumed.
+///
+/// `reading=` parses every unit, so an unparseable shared file fails the run
+/// even when the selection points elsewhere.
+///
+/// `--log-level error` drops the per-dependency `mock_outputs` warning.
+///
+/// Not `xargs`: GNU xargs reports 123 for exit 1-125.
+@Builtins.meta {
+  category = "Infrastructure"
+  description = "Terragrunt HCL validator"
+  mise_tools = List("terragrunt")
+}
+terragrunt_hcl_validate = new Config.Step {
+  glob = "**/*.hcl"
+  exclude = List("**/.terraform/**", "**/.terragrunt-cache/**")
+  check = new Config.CommandSpec {
+    command =
+      """
+      set --
+      for f in {{ files }}; do
+      case "$f" in */*) d="./${f%/*}" ;; *) d="." ;; esac
+      set -- "$@" "--filter=$d" "--filter=reading=./$f"
+      done
+      if [ "$#" -eq 0 ]; then exit 0; fi
+      terragrunt hcl validate --show-config-path --log-level error "$@"
+      """
+    effect = "read"
+  }
+  tests {
+    local const valid =
+      """
+      inputs = {
+        a = 1
+      }
+      """
+    local const undefinedReference =
+      """
+      inputs = {
+        a = local.undefined
+      }
+      """
+    local const readsShared =
+      """
+      locals {
+        shared = read_terragrunt_config(find_in_parent_folders("shared.hcl"))
+      }
+
+      inputs = {
+        a = local.shared.locals.a
+      }
+      """
+    ["check valid config"] {
+      run = "check"
+      tmpdir = true
+      write { ["terragrunt.hcl"] = valid }
+      files = List("terragrunt.hcl")
+      expect { code = 0 }
+    }
+    ["check unparseable config"] {
+      run = "check"
+      tmpdir = true
+      write {
+        ["terragrunt.hcl"] =
+          """
+          inputs = {
+            a = 1
+          """
+      }
+      files = List("terragrunt.hcl")
+      expect { code = 1 }
+    }
+    ["check undefined reference"] {
+      run = "check"
+      tmpdir = true
+      write { ["terragrunt.hcl"] = undefinedReference }
+      files = List("terragrunt.hcl")
+      expect { code = 1 }
+    }
+    ["check reports every selected directory"] {
+      run = "check"
+      tmpdir = true
+      write {
+        ["a/terragrunt.hcl"] = valid
+        ["b/terragrunt.hcl"] = undefinedReference
+      }
+      files = List("a/terragrunt.hcl", "b/terragrunt.hcl")
+      expect { code = 1 }
+    }
+    ["check ignores unselected directories"] {
+      run = "check"
+      tmpdir = true
+      write {
+        ["a/terragrunt.hcl"] = valid
+        ["b/terragrunt.hcl"] = undefinedReference
+      }
+      files = List("a/terragrunt.hcl")
+      expect { code = 0 }
+    }
+    ["check reports an included file the selection reads"] {
+      run = "check"
+      tmpdir = true
+      write {
+        ["shared.hcl"] = "locals {\n  a = local.undefined\n}\n"
+        ["a/terragrunt.hcl"] = readsShared
+      }
+      files = List("shared.hcl")
+      expect { code = 1 }
+    }
+    ["check ignores an included file no unit reads"] {
+      run = "check"
+      tmpdir = true
+      write {
+        ["shared.hcl"] = "locals {\n  a = 1\n}\n"
+        ["other.hcl"] = "locals {\n  b = 1\n}\n"
+        ["a/terragrunt.hcl"] = readsShared
+      }
+      files = List("other.hcl")
+      expect { code = 0 }
+    }
+  }
+}

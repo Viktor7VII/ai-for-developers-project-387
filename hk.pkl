@@ -1,0 +1,11 @@
+amends ".hk/pkl/Config.pkl"
+
+import ".hk/pkl/Builtins.pkl"
+
+hooks {
+  ["commit-msg"] {
+    steps {
+      ["conventional-commit"] = Builtins.check_conventional_commit
+    }
+  }
+}

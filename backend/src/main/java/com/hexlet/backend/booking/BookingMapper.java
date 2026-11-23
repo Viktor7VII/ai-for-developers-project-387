@@ -1,0 +1,35 @@
+package com.hexlet.backend.booking;
+
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
+/** Maps booking domain objects to the generated API models. Times are sent in UTC. */
+final class BookingMapper {
+
+	private BookingMapper() {
+	}
+
+	static com.hexlet.backend.api.model.Booking toDto(Booking booking) {
+		return new com.hexlet.backend.api.model.Booking()
+				.id(booking.getId())
+				.eventTypeId(booking.getEventType().getId())
+				.eventTypeTitle(booking.getEventType().getTitle())
+				.guestName(booking.getGuestName())
+				.guestEmail(booking.getGuestEmail())
+				.startAt(utc(booking.getStartAt()))
+				.endAt(utc(booking.getEndAt()))
+				.status(com.hexlet.backend.api.model.BookingStatus.fromValue(booking.getStatus().name()))
+				.createdAt(utc(booking.getCreatedAt()));
+	}
+
+	static com.hexlet.backend.api.model.TimeSlot toDto(TimeSlot slot) {
+		return new com.hexlet.backend.api.model.TimeSlot()
+				.startAt(utc(slot.startAt()))
+				.endAt(utc(slot.endAt()));
+	}
+
+	private static OffsetDateTime utc(Instant instant) {
+		return OffsetDateTime.ofInstant(instant, ZoneOffset.UTC);
+	}
+}

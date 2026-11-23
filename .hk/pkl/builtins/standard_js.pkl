@@ -1,0 +1,22 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "JavaScript/TypeScript"
+  description = "JavaScript Standard Style"
+  project_indicators {
+    new { file = "package.json"; contains = "\"standard\"" }
+  }
+  mise_tools = List("npm:standard")
+}
+standard_js = new Config.Step {
+  glob = List("**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("standard", "{{files}}") }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command { argv = List("standard", "--fix", "{{files}}") }
+    effect = "write"
+  }
+}

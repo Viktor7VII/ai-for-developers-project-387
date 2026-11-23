@@ -1,0 +1,7 @@
+.git
+.idea
+**/node_modules
+backend/target
+backend/data
+frontend/dist
+e2e

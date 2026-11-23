@@ -1,0 +1,29 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+import "./test/helpers.pkl"
+
+@Builtins.meta {
+  category = "Lua"
+  description = "Lua linter"
+  project_indicators {
+    new { file = "selene.toml" }
+  }
+  mise_tools = List("aqua:Kampfkarren/selene/light")
+}
+selene = new Config.Step {
+  types = List("lua")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("selene", "{{files}}") }
+    effect = "read"
+  }
+  tests {
+    local const testMaker = new helpers.TestMaker {
+      filename = "test.lua"
+      extra_files = new Mapping<String, String> {
+        ["selene.toml"] = "std = \"lua51\"\n"
+      }
+    }
+    ["check bad file"] = testMaker.checkFail("rint(\"hello, world!\")\n", 1)
+    ["check good file"] = testMaker.checkPass("print(\"hello, world!\")\n")
+  }
+}

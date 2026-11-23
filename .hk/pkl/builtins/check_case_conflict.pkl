@@ -1,0 +1,37 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Special Purpose"
+  description = "Detect case-insensitive filename conflicts"
+}
+check_case_conflict = new Config.Step {
+  glob = "**/*"
+  // Only file names matter, never contents, so the default filters would wrongly
+  // skip the step when a changeset holds only binary files or symlinks, whose
+  // names can conflict like any other.
+  allow_binary = true
+  allow_symlinks = true
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("hk", "util", "check-case-conflict", "{{files}}") }
+    effect = "read"
+  }
+  tests {
+    ["detects case conflicts"] {
+      run = "check"
+      write = new Mapping<String, String> {
+        ["{{tmp}}/README.md"] = "# First\n"
+        ["{{tmp}}/readme.md"] = "# Second\n"
+      }
+      expect { code = 1 }
+    }
+    ["passes when no conflicts"] {
+      run = "check"
+      write = new Mapping<String, String> {
+        ["{{tmp}}/file1.txt"] = "content\n"
+        ["{{tmp}}/file2.txt"] = "content\n"
+      }
+      expect { code = 0 }
+    }
+  }
+}

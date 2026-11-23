@@ -1,0 +1,22 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "JavaScript/TypeScript"
+  description = "JavaScript/TypeScript linter with great defaults"
+  project_indicators {
+    new { file = "package.json"; contains = "\"xo\"" }
+  }
+  mise_tools = List("npm:xo")
+}
+xo = new Config.Step {
+  glob = List("**/*.js", "**/*.jsx", "**/*.ts", "**/*.tsx")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("xo", "{{files}}") }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command { argv = List("xo", "--fix", "{{files}}") }
+    effect = "write"
+  }
+}

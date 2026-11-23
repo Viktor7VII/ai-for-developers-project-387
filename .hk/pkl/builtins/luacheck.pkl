@@ -1,0 +1,18 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Lua"
+  description = "Lua linter"
+  project_indicators {
+    new { file = ".luacheckrc" }
+  }
+  homepage = "https://github.com/lunarmodules/luacheck"
+}
+luacheck = new Config.Step {
+  types = List("lua")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("luacheck", "{{files}}") }
+    effect = "read"
+  }
+}

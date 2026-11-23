@@ -1,0 +1,18 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Ruby"
+  description = "Performance suggestions"
+  project_indicators {
+    new { file = ".fasterer.yml" }
+  }
+  mise_tools = List("gem:fasterer")
+}
+fasterer = new Config.Step {
+  types = List("ruby")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("fasterer", "{{files}}") }
+    effect = "read"
+  }
+}

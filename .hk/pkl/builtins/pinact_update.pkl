@@ -1,0 +1,54 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+class PinactUpdateStep extends Config.Step {
+  hidden version: "3" | "4" = "4"
+  glob = List(".github/workflows/*", "**/action.*")
+  types = List("yaml")
+  // `verify-comment` verifies pairs of commit SHA and version comments are correct
+  hidden verifyFlag = if (version == "3") "--verify" else "--verify-comment"
+  check = new Config.CommandSpec {
+    command = new Config.Command {
+      argv = List("pinact", "run", "--update", verifyFlag, "--check", "{{files}}")
+    }
+    effect = "read"
+  }
+  // pinact's SARIF report carries fixes, which `hk util sarif-diff` turns into
+  // a patch. A finding without a fix prints no patch, so hk runs the fixer.
+  check_diff = new Config.CommandSpec {
+    command = new Config.Command {
+      argv =
+        List(
+          "hk",
+          "util",
+          "sarif-diff",
+          "--",
+          "pinact",
+          "run",
+          "--update",
+          verifyFlag,
+          "--check",
+          "--format",
+          "sarif",
+          "{{files}}",
+        )
+    }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command {
+      argv = List("pinact", "run", "--update", verifyFlag, "{{files}}")
+    }
+    effect = "write"
+  }
+  // Tests removed: they check against live GitHub Action versions, making them flaky
+}
+
+@Builtins.meta {
+  category = "Infrastructure"
+  description = "Pin GitHub Actions to update actions to latest versions"
+  mise_tools = List("pinact")
+}
+// Keep the exported type exactly Config.Step: pklr rejects a concrete subclass
+// instance when it is inserted into Mapping<String, Config.Step>.
+const pinact_update = (new PinactUpdateStep {}) as Config.Step

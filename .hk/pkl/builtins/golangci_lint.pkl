@@ -1,0 +1,81 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Go"
+  description = "Go meta-linter"
+  project_indicators {
+    new { file = "go.mod" }
+  }
+  mise_tools = List("golangci-lint")
+}
+golangci_lint = new Config.Step {
+  glob = "**/*.go"
+  workspace_indicator = "go.mod"
+  dir = "{{workspace}}"
+  check = new Config.CommandSpec {
+    command = "golangci-lint run --fix=false ./..."
+    effect = "write"
+  }
+  // `path:line:col: message (linter)`, followed by a source excerpt
+  diagnostic_format = "gcc-paren"
+  fix = new Config.CommandSpec {
+    command = "golangci-lint run --fix ./..."
+    effect = "write"
+  }
+  tests {
+    ["check good file"] {
+      run = "check"
+      tmpdir = true
+      write = new Mapping<String, String> {
+        ["go.mod"] =
+          """
+            module example.com/test
+
+            go 1.21
+          """
+        ["main.go"] =
+          """
+            package main
+
+            func main() {}
+          """
+      }
+      expect { code = 0 }
+    }
+    ["check bad file reports diagnostics"] {
+      run = "check"
+      tmpdir = true
+      write = new Mapping<String, String> {
+        ["go.mod"] =
+          """
+            module example.com/test
+            go 1.21
+          """
+        ["main.go"] =
+          """
+            package main
+
+            import "fmt"
+
+            func main() {
+            	x := 1
+            	x = 2
+            	fmt.Println(x)
+            }
+          """
+      }
+      expect {
+        code = 1
+        diagnostics {
+          new {
+            path = "main.go"
+            line = 6
+            rule = "ineffassign"
+            message = "ineffectual assignment to x"
+          }
+        }
+      }
+    }
+  }
+}

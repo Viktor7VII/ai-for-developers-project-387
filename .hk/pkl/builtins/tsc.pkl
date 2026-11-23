@@ -1,0 +1,44 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+import "./test/helpers.pkl"
+
+@Builtins.meta {
+  category = "JavaScript/TypeScript"
+  description = "TypeScript type checker"
+  project_indicators {
+    new { file = "tsconfig.json" }
+  }
+  mise_tools = List("npm:typescript")
+}
+tsc = new Config.Step {
+  workspace_indicator = "tsconfig.json"
+  glob = List("**/*.ts", "**/*.tsx")
+  check = new Config.CommandSpec {
+    command = "tsc --noEmit -p {{workspace_indicator}}"
+    effect = "write"
+  }
+  // `path(line,col): error TS2322: message`; tsc prints this form when not writing to a terminal
+  diagnostic_format = "tsc"
+  tests {
+    local const testMaker = new helpers.TestMaker {
+      filename = "src/test.ts"
+      extra_files = new Mapping<String, String> {
+        ["tsconfig.json"] = "{\"compilerOptions\": {\"strict\": true}}"
+      }
+    }
+    ["check bad file"] = testMaker.checkFail("const x: number = 'hello';", 2)
+    ["check good file"] = testMaker.checkPass("const x: number = 1;")
+    ["check bad file reports diagnostics"] =
+      testMaker.checkDiagnostics(
+        "const x: number = 'hello';",
+        2,
+        List(new Config.StepTestDiagnostic {
+          path = "src/test.ts"
+          line = 1
+          column = 7
+          severity = "error"
+          rule = "TS2322"
+        }),
+      )
+  }
+}

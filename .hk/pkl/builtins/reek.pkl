@@ -1,0 +1,19 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Ruby"
+  description = "Code smell detector"
+  project_indicators {
+    new { file = ".reek.yml" }
+    new { file = "config.reek" }
+  }
+  mise_tools = List("gem:reek")
+}
+reek = new Config.Step {
+  types = List("ruby")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("reek", "{{files}}") }
+    effect = "read"
+  }
+}

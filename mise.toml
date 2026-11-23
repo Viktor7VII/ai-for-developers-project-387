@@ -1,0 +1,13 @@
+[settings]
+experimental = true
+
+[tools]
+node = "26"
+java = "temurin-21"
+maven = "3.9"
+hk = "2.13.0"
+
+[tasks]
+check = "node scripts/check.mjs"
+generate = "node scripts/check.mjs generate"
+e2e = "npm --prefix e2e test"

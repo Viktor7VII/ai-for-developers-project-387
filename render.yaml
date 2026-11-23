@@ -1,0 +1,9 @@
+# Render Blueprint: one Docker web service, no secrets.
+services:
+  - type: web
+    name: call-calendar
+    runtime: docker
+    plan: free
+    branch: main
+    healthCheckPath: /actuator/health
+    autoDeploy: true

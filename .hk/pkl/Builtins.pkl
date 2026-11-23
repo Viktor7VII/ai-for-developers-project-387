@@ -1,0 +1,402 @@
+// THIS FILE IS GENERATED: Run 'mise run pkl:gen' to generate.
+
+import "Config.pkl" as Config
+
+/// Indicator for detecting if a builtin is relevant to a project
+class ProjectIndicator {
+  /// Exact file path to check for existence
+  file: String?
+
+  /// Glob pattern to match any file
+  glob: String?
+
+  /// Whether the glob should match files below the project root
+  recursive: Boolean?
+
+  /// Content pattern to grep for (requires file to be set)
+  contains: String?
+
+  /// Regular expression matched against each line of the file (requires file to be set)
+  contains_regex: String?
+}
+
+/// Internal class for annotating hk builtins for documentation generation
+class meta extends Annotation {
+  /// Category for documentation grouping (e.g., "JavaScript/TypeScript", "Python", "Rust")
+  category: String?
+
+  /// Human-readable description of the step for documentation
+  description: String?
+
+  /// Project indicators for auto-detection
+  project_indicators: Listing<ProjectIndicator>?
+
+  /// mise tools that install the executables the step runs, as `mise use` arguments
+  /// (e.g. `shfmt` or `npm:eslint`). Omitted for steps that need nothing installed.
+  mise_tools: List<String>?
+
+  /// Project or documentation URL for tools mise cannot install
+  homepage: String?
+}
+
+actionlint = import("builtins/actionlint.pkl").actionlint
+alejandra = import("builtins/alejandra.pkl").alejandra
+ansible_lint = import("builtins/ansible_lint.pkl").ansible_lint
+aqua_update_checksum = import("builtins/aqua_update_checksum.pkl").aqua_update_checksum
+asciidoctor = import("builtins/asciidoctor.pkl").asciidoctor
+astro = import("builtins/astro.pkl").astro
+betterleaks = import("builtins/betterleaks.pkl").betterleaks
+biome = import("builtins/biome.pkl").biome
+black = import("builtins/black.pkl").black
+brakeman = import("builtins/brakeman.pkl").brakeman
+buf_format = import("builtins/buf_format.pkl").buf_format
+buf_lint = import("builtins/buf_lint.pkl").buf_lint
+buildifier_format = import("builtins/buildifier_format.pkl").buildifier_format
+buildifier_lint = import("builtins/buildifier_lint.pkl").buildifier_lint
+bundle_audit = import("builtins/bundle_audit.pkl").bundle_audit
+byte_order_marker = import("builtins/byte_order_marker.pkl").byte_order_marker
+cargo_check = import("builtins/cargo_check.pkl").cargo_check
+cargo_clippy = import("builtins/cargo_clippy.pkl").cargo_clippy
+cargo_deny = import("builtins/cargo_deny.pkl").cargo_deny
+cargo_fmt = import("builtins/cargo_fmt.pkl").cargo_fmt
+check_added_large_files = import("builtins/check_added_large_files.pkl").check_added_large_files
+check_case_conflict = import("builtins/check_case_conflict.pkl").check_case_conflict
+check_conventional_commit =
+  import("builtins/check_conventional_commit.pkl").check_conventional_commit
+check_executables_have_shebangs =
+  import("builtins/check_executables_have_shebangs.pkl").check_executables_have_shebangs
+check_merge_conflict = import("builtins/check_merge_conflict.pkl").check_merge_conflict
+check_shebang_scripts_are_executable =
+  import("builtins/check_shebang_scripts_are_executable.pkl").check_shebang_scripts_are_executable
+check_symlinks = import("builtins/check_symlinks.pkl").check_symlinks
+clang_format = import("builtins/clang_format.pkl").clang_format
+cmake_format = import("builtins/cmake_format.pkl").cmake_format
+cocogitto_commit_msg = import("builtins/cocogitto_commit_msg.pkl").cocogitto_commit_msg
+contextlint = import("builtins/contextlint.pkl").contextlint
+cpp_lint = import("builtins/cpp_lint.pkl").cpp_lint
+dclint = import("builtins/dclint.pkl").dclint
+deadnix = import("builtins/deadnix.pkl").deadnix
+deno = import("builtins/deno.pkl").deno
+deno_check = import("builtins/deno_check.pkl").deno_check
+destroyed_symlinks = import("builtins/destroyed_symlinks.pkl").destroyed_symlinks
+detect_private_key = import("builtins/detect_private_key.pkl").detect_private_key
+dotenv_linter = import("builtins/dotenv_linter.pkl").dotenv_linter
+dotnet_format = import("builtins/dotnet_format.pkl").dotnet_format
+dprint = import("builtins/dprint.pkl").dprint
+droast = import("builtins/droast.pkl").droast
+editorconfig_checker = import("builtins/editorconfig-checker.pkl").editorconfig_checker
+erb = import("builtins/erb.pkl").erb
+err_check = import("builtins/err_check.pkl").err_check
+eslint = import("builtins/eslint.pkl").eslint
+fasterer = import("builtins/fasterer.pkl").fasterer
+fix_smart_quotes = import("builtins/fix_smart_quotes.pkl").fix_smart_quotes
+flake8 = import("builtins/flake8.pkl").flake8
+forbid_submodules = import("builtins/forbid_submodules.pkl").forbid_submodules
+ghalint_action = import("builtins/ghalint_action.pkl").ghalint_action
+ghalint_workflow = import("builtins/ghalint_workflow.pkl").ghalint_workflow
+gitleaks = import("builtins/gitleaks.pkl").gitleaks
+go_fix = import("builtins/go_fix.pkl").go_fix
+go_fmt = import("builtins/go_fmt.pkl").go_fmt
+go_fumpt = import("builtins/go_fumpt.pkl").go_fumpt
+go_imports = import("builtins/go_imports.pkl").go_imports
+go_lines = import("builtins/go_lines.pkl").go_lines
+go_sec = import("builtins/go_sec.pkl").go_sec
+go_vet = import("builtins/go_vet.pkl").go_vet
+go_vuln_check = import("builtins/go_vuln_check.pkl").go_vuln_check
+golangci_lint = import("builtins/golangci_lint.pkl").golangci_lint
+golangci_lint_fmt = import("builtins/golangci_lint_fmt.pkl").golangci_lint_fmt
+gomod_tidy = import("builtins/gomod_tidy.pkl").gomod_tidy
+google_java_format = import("builtins/google_java_format.pkl").google_java_format
+hadolint = import("builtins/hadolint.pkl").hadolint
+harper = import("builtins/harper.pkl").harper
+harper_commit_message = import("builtins/harper_commit_message.pkl").harper_commit_message
+hclfmt = import("builtins/hclfmt.pkl").hclfmt
+herb_format = import("builtins/herb_format.pkl").herb_format
+herb_lint = import("builtins/herb_lint.pkl").herb_lint
+hk_test = import("builtins/hk_test.pkl").hk_test
+isort = import("builtins/isort.pkl").isort
+jactionlint = import("builtins/jactionlint.pkl").jactionlint
+jq = import("builtins/jq.pkl").jq
+just_format = import("builtins/just_format.pkl").just_format
+kingfisher = import("builtins/kingfisher.pkl").kingfisher
+knip = import("builtins/knip.pkl").knip
+ktlint = import("builtins/ktlint.pkl").ktlint
+kube_linter = import("builtins/kube_linter.pkl").kube_linter
+kubeconform = import("builtins/kubeconform.pkl").kubeconform
+ls_lint = import("builtins/ls_lint.pkl").ls_lint
+luacheck = import("builtins/luacheck.pkl").luacheck
+lychee = import("builtins/lychee.pkl").lychee
+lychee_extended = import("builtins/lychee_extended.pkl").lychee_extended
+mado = import("builtins/mado.pkl").mado
+markdown_lint = import("builtins/markdown_lint.pkl").markdown_lint
+mdschema = import("builtins/mdschema.pkl").mdschema
+mise = import("builtins/mise.pkl").mise
+mise_config_dir = import("builtins/mise_config_dir.pkl").mise_config_dir
+mix_compile = import("builtins/mix_compile.pkl").mix_compile
+mix_fmt = import("builtins/mix_fmt.pkl").mix_fmt
+mix_test = import("builtins/mix_test.pkl").mix_test
+mixed_line_ending = import("builtins/mixed_line_ending.pkl").mixed_line_ending
+mypy = import("builtins/mypy.pkl").mypy
+newlines = import("builtins/newlines.pkl").newlines
+nil = import("builtins/nil.pkl").nil
+nix_fmt = import("builtins/nix_fmt.pkl").nix_fmt
+nixf_diagnose = import("builtins/nixf_diagnose.pkl").nixf_diagnose
+nixpkgs_format = import("builtins/nixpkgs_format.pkl").nixpkgs_format
+no_commit_to_branch = import("builtins/no_commit_to_branch.pkl").no_commit_to_branch
+osv_scanner = import("builtins/osv_scanner.pkl").osv_scanner
+ox_lint = import("builtins/ox_lint.pkl").ox_lint
+oxfmt = import("builtins/oxfmt.pkl").oxfmt
+packer_fmt = import("builtins/packer_fmt.pkl").packer_fmt
+php_cs = import("builtins/php_cs.pkl").php_cs
+phpstan = import("builtins/phpstan.pkl").phpstan
+pinact = import("builtins/pinact.pkl").pinact
+pinact_update = import("builtins/pinact_update.pkl").pinact_update
+pkl = import("builtins/pkl.pkl").pkl
+pkl_format = import("builtins/pkl_format.pkl").pkl_format
+prettier = import("builtins/prettier.pkl").prettier
+protolint = import("builtins/protolint.pkl").protolint
+pylint = import("builtins/pylint.pkl").pylint
+pyright = import("builtins/pyright.pkl").pyright
+python_check_ast = import("builtins/python_check_ast.pkl").python_check_ast
+python_debug_statements = import("builtins/python_debug_statements.pkl").python_debug_statements
+reek = import("builtins/reek.pkl").reek
+renovate_deps = import("builtins/renovate_deps.pkl").renovate_deps
+revive = import("builtins/revive.pkl").revive
+rubocop = import("builtins/rubocop.pkl").rubocop
+rubocop_server = import("builtins/rubocop_server.pkl").rubocop_server
+ruff = import("builtins/ruff.pkl").ruff
+ruff_format = import("builtins/ruff_format.pkl").ruff_format
+rumdl = import("builtins/rumdl.pkl").rumdl
+rumdl_format = import("builtins/rumdl_format.pkl").rumdl_format
+rustfmt = import("builtins/rustfmt.pkl").rustfmt
+ryl = import("builtins/ryl.pkl").ryl
+ryl_format = import("builtins/ryl_format.pkl").ryl_format
+ryl_markdown = import("builtins/ryl_markdown.pkl").ryl_markdown
+ryl_markdown_format = import("builtins/ryl_markdown_format.pkl").ryl_markdown_format
+selene = import("builtins/selene.pkl").selene
+shellcheck = import("builtins/shellcheck.pkl").shellcheck
+shellharden = import("builtins/shellharden.pkl").shellharden
+sherif = import("builtins/sherif.pkl").sherif
+shfmt = import("builtins/shfmt.pkl").shfmt
+sorbet = import("builtins/sorbet.pkl").sorbet
+sort_package_json = import("builtins/sort_package_json.pkl").sort_package_json
+sql_fluff = import("builtins/sql_fluff.pkl").sql_fluff
+standard_js = import("builtins/standard_js.pkl").standard_js
+standard_rb = import("builtins/standard_rb.pkl").standard_rb
+staticcheck = import("builtins/staticcheck.pkl").staticcheck
+stylelint = import("builtins/stylelint.pkl").stylelint
+stylua = import("builtins/stylua.pkl").stylua
+swiftlint = import("builtins/swiftlint.pkl").swiftlint
+taplo = import("builtins/taplo.pkl").taplo
+taplo_format = import("builtins/taplo_format.pkl").taplo_format
+terraform = import("builtins/terraform.pkl").terraform
+terraform_docs = import("builtins/terraform_docs.pkl").terraform_docs
+terraform_validate = import("builtins/terraform_validate.pkl").terraform_validate
+terragrunt_hcl_fmt = import("builtins/terragrunt_hcl_fmt.pkl").terragrunt_hcl_fmt
+terragrunt_hcl_validate = import("builtins/terragrunt_hcl_validate.pkl").terragrunt_hcl_validate
+textlint = import("builtins/textlint.pkl").textlint
+tf_lint = import("builtins/tf_lint.pkl").tf_lint
+tinymist = import("builtins/tinymist.pkl").tinymist
+tofu = import("builtins/tofu.pkl").tofu
+tofu_validate = import("builtins/tofu_validate.pkl").tofu_validate
+tombi = import("builtins/tombi.pkl").tombi
+tombi_format = import("builtins/tombi_format.pkl").tombi_format
+trailing_whitespace = import("builtins/trailing_whitespace.pkl").trailing_whitespace
+trufflehog = import("builtins/trufflehog.pkl").trufflehog
+tsc = import("builtins/tsc.pkl").tsc
+tsserver = import("builtins/tsserver.pkl").tsserver
+ty = import("builtins/ty.pkl").ty
+typos = import("builtins/typos.pkl").typos
+typstyle = import("builtins/typstyle.pkl").typstyle
+vacuum = import("builtins/vacuum.pkl").vacuum
+vale = import("builtins/vale.pkl").vale
+vp_check = import("builtins/vp_check.pkl").vp_check
+vp_fmt = import("builtins/vp_fmt.pkl").vp_fmt
+vp_lint = import("builtins/vp_lint.pkl").vp_lint
+xmllint = import("builtins/xmllint.pkl").xmllint
+xo = import("builtins/xo.pkl").xo
+yamlfmt = import("builtins/yamlfmt.pkl").yamlfmt
+yamllint = import("builtins/yamllint.pkl").yamllint
+yq = import("builtins/yq.pkl").yq
+zizmor = import("builtins/zizmor.pkl").zizmor
+
+// Internal inventory used by builtin tests and documentation generation.
+all = new Mapping<String, Config.Step> {
+  ["actionlint"] = actionlint
+  ["alejandra"] = alejandra
+  ["ansible_lint"] = ansible_lint
+  ["aqua_update_checksum"] = aqua_update_checksum
+  ["asciidoctor"] = asciidoctor
+  ["astro"] = astro
+  ["betterleaks"] = betterleaks
+  ["biome"] = biome
+  ["black"] = black
+  ["brakeman"] = brakeman
+  ["buf_format"] = buf_format
+  ["buf_lint"] = buf_lint
+  ["buildifier_format"] = buildifier_format
+  ["buildifier_lint"] = buildifier_lint
+  ["bundle_audit"] = bundle_audit
+  ["byte_order_marker"] = byte_order_marker
+  ["cargo_check"] = cargo_check
+  ["cargo_clippy"] = cargo_clippy
+  ["cargo_deny"] = cargo_deny
+  ["cargo_fmt"] = cargo_fmt
+  ["check_added_large_files"] = check_added_large_files
+  ["check_case_conflict"] = check_case_conflict
+  ["check_conventional_commit"] = check_conventional_commit
+  ["check_executables_have_shebangs"] = check_executables_have_shebangs
+  ["check_merge_conflict"] = check_merge_conflict
+  ["check_shebang_scripts_are_executable"] = check_shebang_scripts_are_executable
+  ["check_symlinks"] = check_symlinks
+  ["clang_format"] = clang_format
+  ["cmake_format"] = cmake_format
+  ["cocogitto_commit_msg"] = cocogitto_commit_msg
+  ["contextlint"] = contextlint
+  ["cpp_lint"] = cpp_lint
+  ["dclint"] = dclint
+  ["deadnix"] = deadnix
+  ["deno"] = deno
+  ["deno_check"] = deno_check
+  ["destroyed_symlinks"] = destroyed_symlinks
+  ["detect_private_key"] = detect_private_key
+  ["dotenv_linter"] = dotenv_linter
+  ["dotnet_format"] = dotnet_format
+  ["dprint"] = dprint
+  ["droast"] = droast
+  ["editorconfig_checker"] = editorconfig_checker
+  ["erb"] = erb
+  ["err_check"] = err_check
+  ["eslint"] = eslint
+  ["fasterer"] = fasterer
+  ["fix_smart_quotes"] = fix_smart_quotes
+  ["flake8"] = flake8
+  ["forbid_submodules"] = forbid_submodules
+  ["ghalint_action"] = ghalint_action
+  ["ghalint_workflow"] = ghalint_workflow
+  ["gitleaks"] = gitleaks
+  ["go_fix"] = go_fix
+  ["go_fmt"] = go_fmt
+  ["go_fumpt"] = go_fumpt
+  ["go_imports"] = go_imports
+  ["go_lines"] = go_lines
+  ["go_sec"] = go_sec
+  ["go_vet"] = go_vet
+  ["go_vuln_check"] = go_vuln_check
+  ["golangci_lint"] = golangci_lint
+  ["golangci_lint_fmt"] = golangci_lint_fmt
+  ["gomod_tidy"] = gomod_tidy
+  ["google_java_format"] = google_java_format
+  ["hadolint"] = hadolint
+  ["harper"] = harper
+  ["harper_commit_message"] = harper_commit_message
+  ["hclfmt"] = hclfmt
+  ["herb_format"] = herb_format
+  ["herb_lint"] = herb_lint
+  ["hk_test"] = hk_test
+  ["isort"] = isort
+  ["jactionlint"] = jactionlint
+  ["jq"] = jq
+  ["just_format"] = just_format
+  ["kingfisher"] = kingfisher
+  ["knip"] = knip
+  ["ktlint"] = ktlint
+  ["kube_linter"] = kube_linter
+  ["kubeconform"] = kubeconform
+  ["ls_lint"] = ls_lint
+  ["luacheck"] = luacheck
+  ["lychee"] = lychee
+  ["lychee_extended"] = lychee_extended
+  ["mado"] = mado
+  ["markdown_lint"] = markdown_lint
+  ["mdschema"] = mdschema
+  ["mise"] = mise
+  ["mise_config_dir"] = mise_config_dir
+  ["mix_compile"] = mix_compile
+  ["mix_fmt"] = mix_fmt
+  ["mix_test"] = mix_test
+  ["mixed_line_ending"] = mixed_line_ending
+  ["mypy"] = mypy
+  ["newlines"] = newlines
+  ["nil"] = nil
+  ["nix_fmt"] = nix_fmt
+  ["nixf_diagnose"] = nixf_diagnose
+  ["nixpkgs_format"] = nixpkgs_format
+  ["no_commit_to_branch"] = no_commit_to_branch
+  ["osv_scanner"] = osv_scanner
+  ["ox_lint"] = ox_lint
+  ["oxfmt"] = oxfmt
+  ["packer_fmt"] = packer_fmt
+  ["php_cs"] = php_cs
+  ["phpstan"] = phpstan
+  ["pinact"] = pinact
+  ["pinact_update"] = pinact_update
+  ["pkl"] = pkl
+  ["pkl_format"] = pkl_format
+  ["prettier"] = prettier
+  ["protolint"] = protolint
+  ["pylint"] = pylint
+  ["pyright"] = pyright
+  ["python_check_ast"] = python_check_ast
+  ["python_debug_statements"] = python_debug_statements
+  ["reek"] = reek
+  ["renovate_deps"] = renovate_deps
+  ["revive"] = revive
+  ["rubocop"] = rubocop
+  ["rubocop_server"] = rubocop_server
+  ["ruff"] = ruff
+  ["ruff_format"] = ruff_format
+  ["rumdl"] = rumdl
+  ["rumdl_format"] = rumdl_format
+  ["rustfmt"] = rustfmt
+  ["ryl"] = ryl
+  ["ryl_format"] = ryl_format
+  ["ryl_markdown"] = ryl_markdown
+  ["ryl_markdown_format"] = ryl_markdown_format
+  ["selene"] = selene
+  ["shellcheck"] = shellcheck
+  ["shellharden"] = shellharden
+  ["sherif"] = sherif
+  ["shfmt"] = shfmt
+  ["sorbet"] = sorbet
+  ["sort_package_json"] = sort_package_json
+  ["sql_fluff"] = sql_fluff
+  ["standard_js"] = standard_js
+  ["standard_rb"] = standard_rb
+  ["staticcheck"] = staticcheck
+  ["stylelint"] = stylelint
+  ["stylua"] = stylua
+  ["swiftlint"] = swiftlint
+  ["taplo"] = taplo
+  ["taplo_format"] = taplo_format
+  ["terraform"] = terraform
+  ["terraform_docs"] = terraform_docs
+  ["terraform_validate"] = terraform_validate
+  ["terragrunt_hcl_fmt"] = terragrunt_hcl_fmt
+  ["terragrunt_hcl_validate"] = terragrunt_hcl_validate
+  ["textlint"] = textlint
+  ["tf_lint"] = tf_lint
+  ["tinymist"] = tinymist
+  ["tofu"] = tofu
+  ["tofu_validate"] = tofu_validate
+  ["tombi"] = tombi
+  ["tombi_format"] = tombi_format
+  ["trailing_whitespace"] = trailing_whitespace
+  ["trufflehog"] = trufflehog
+  ["tsc"] = tsc
+  ["tsserver"] = tsserver
+  ["ty"] = ty
+  ["typos"] = typos
+  ["typstyle"] = typstyle
+  ["vacuum"] = vacuum
+  ["vale"] = vale
+  ["vp_check"] = vp_check
+  ["vp_fmt"] = vp_fmt
+  ["vp_lint"] = vp_lint
+  ["xmllint"] = xmllint
+  ["xo"] = xo
+  ["yamlfmt"] = yamlfmt
+  ["yamllint"] = yamllint
+  ["yq"] = yq
+  ["zizmor"] = zizmor
+}

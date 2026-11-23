@@ -1,0 +1,24 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Elixir"
+  description = "Format Elixir with Mix"
+  project_indicators {
+    new { file = "mix.exs" }
+    new { file = ".formatter.exs" }
+  }
+  mise_tools = List("elixir")
+}
+mix_fmt = new Config.Step {
+  glob = List("**/*.ex", "**/*.exs")
+  exclude = List("deps/**/*")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("mix", "format", "--check-formatted", "{{files}}") }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command { argv = List("mix", "format", "{{files}}") }
+    effect = "write"
+  }
+}

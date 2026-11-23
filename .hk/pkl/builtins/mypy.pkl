@@ -1,0 +1,39 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+import "./test/helpers.pkl"
+
+@Builtins.meta {
+  category = "Python"
+  description = "Static type checker for Python"
+  project_indicators {
+    new { file = "pyproject.toml"; contains = "mypy" }
+  }
+  mise_tools = List("pipx:mypy")
+}
+mypy = new Config.Step {
+  glob = List("**/*.py", "**/*.pyi")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("mypy", "{{files}}") }
+    effect = "write"
+  }
+  // Findings are `path:line: error: message  [code]` (no column); hk ignores the `Found N errors` summary
+  diagnostic_format = "gcc"
+  tests {
+    local const testMaker = new helpers.TestMaker { filename = "test.py" }
+    ["check bad file"] = testMaker.checkFail("x: int = ''", 1)
+    ["check bad file reports diagnostics"] =
+      testMaker.checkDiagnostics(
+        "x: int = ''",
+        1,
+        List(new Config.StepTestDiagnostic {
+          path = "test.py"
+          line = 1
+          column = 1
+          severity = "error"
+          rule = "assignment"
+          message = "Incompatible types in assignment"
+        }),
+      )
+    ["check good file"] = testMaker.checkPass("x: str = ''")
+  }
+}

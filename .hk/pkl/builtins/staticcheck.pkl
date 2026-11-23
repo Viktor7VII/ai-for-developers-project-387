@@ -1,0 +1,22 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Go"
+  description = "Go static analysis"
+  project_indicators {
+    new { file = "staticcheck.conf" }
+  }
+  mise_tools = List("staticcheck")
+}
+staticcheck = new Config.Step {
+  glob = "**/*.go"
+  workspace_indicator = "go.mod"
+  dir = "{{workspace}}"
+  check = new Config.CommandSpec {
+    command = "staticcheck ./..."
+    effect = "write"
+  }
+  // `path:line:col: message (SA4006)`
+  diagnostic_format = "gcc-paren"
+}

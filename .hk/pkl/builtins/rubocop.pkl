@@ -1,0 +1,133 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+import "./test/helpers.pkl"
+
+@Builtins.meta {
+  category = "Ruby"
+  description = "Ruby style guide"
+  project_indicators {
+    new { file = "Gemfile" }
+  }
+  mise_tools = List("gem:rubocop")
+}
+rubocop = new Config.Step {
+  // RuboCop's default configuration
+  // https://github.com/rubocop/rubocop/blob/v1.87.0/config/default.yml#L9-L55
+  glob =
+    List(
+      "**/*.rb",
+      "**/*.arb",
+      "**/*.axlsx",
+      "**/*.builder",
+      "**/*.gemfile",
+      "**/*.gemspec",
+      "**/*.jb",
+      "**/*.jbuilder",
+      "**/*.mspec",
+      "**/*.opal",
+      "**/*.pluginspec",
+      "**/*.podspec",
+      "**/*.rabl",
+      "**/*.rake",
+      "**/*.rbw",
+      "**/*.ru",
+      "**/*.ruby",
+      "**/*.schema",
+      "**/*.spec",
+      "**/*.thor",
+      "**/.irbrc",
+      "**/.pryrc",
+      "**/.simplecov",
+      "**/buildfile",
+      "**/Appraisals",
+      "**/Berksfile",
+      "**/Brewfile",
+      "**/Buildfile",
+      "**/Capfile",
+      "**/Dangerfile",
+      "**/Deliverfile",
+      "**/Fastfile",
+      "**/*Fastfile",
+      "**/Gemfile",
+      "**/Guardfile",
+      "**/Jarfile",
+      "**/Mavenfile",
+      "**/Podfile",
+      "**/Puppetfile",
+      "**/Rakefile",
+      "**/rakefile",
+      "**/Schemafile",
+      "**/Snapfile",
+      "**/Steepfile",
+      "**/Thorfile",
+      "**/Vagrantfile",
+    )
+  // RuboCop's default configuration
+  // https://github.com/rubocop/rubocop/blob/v1.87.0/config/default.yml#L56-L60
+  exclude =
+    List(
+      "node_modules/**/*",
+      "tmp/**/*",
+      "vendor/**/*",
+      ".git/**/*",
+    )
+  // `--force-exclusion`: Any files excluded by `Exclude` in RuboCop configuration files will be excluded, even if given explicitly as arguments.
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("rubocop", "--force-exclusion", "{{files}}") }
+    effect = "write"
+  }
+  // `--format files`: Outputs one file per line and exits non-zero when offenses exist.
+  // `--list-target-files` would list every target file and always exit zero, so hk would
+  // never detect files needing fixes.
+  check_list_files = new Config.CommandSpec {
+    command = new Config.Command {
+      argv = List("rubocop", "--force-exclusion", "--format", "files", "{{files}}")
+    }
+    effect = "write"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command {
+      argv = List("rubocop", "--force-exclusion", "--autocorrect", "{{files}}")
+    }
+    effect = "write"
+  }
+  tests {
+    local const testMaker = new helpers.TestMaker {
+      filename = "test.rb"
+      extra_files = new Mapping<String, String> {
+        [".rubocop.yml"] =
+          """
+          AllCops:
+            NewCops: enable
+
+          """
+      }
+    }
+    local const bad =
+      """
+      # frozen_string_literal: true
+
+      pp "Hello World"
+      """ + "\n"
+    local const good =
+      """
+      # frozen_string_literal: true
+
+      pp 'Hello World'
+      """ + "\n"
+    ["check bad file"] = testMaker.checkFail(bad, 1)
+    ["check good file"] = testMaker.checkPass(good)
+    ["fix bad file violations remain"] =
+      testMaker.fixFail(
+        """
+        pp "Hello World"
+        """ + "\n",
+        """
+        pp 'Hello World'
+        """ + "\n",
+        1,
+      )
+    ["fix bad file"] = testMaker.fixPass(bad, good)
+    ["fix good file"] = testMaker.fixPass(good, good)
+  }
+}

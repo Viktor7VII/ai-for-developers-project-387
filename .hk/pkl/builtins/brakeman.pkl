@@ -1,0 +1,19 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Ruby"
+  description = "Security scanner for Rails"
+  project_indicators {
+    new { file = "config/brakeman.yml" }
+    new { file = "Gemfile"; contains_regex = #"^\s*gem\s*\(?\s*["']brakeman["']"# }
+  }
+  mise_tools = List("gem:brakeman")
+}
+brakeman = new Config.Step {
+  types = List("ruby")
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("brakeman", "-q", "-w2") }
+    effect = "read"
+  }
+}

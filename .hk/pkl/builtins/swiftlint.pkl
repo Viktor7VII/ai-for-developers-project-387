@@ -1,0 +1,23 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Other Languages"
+  description = "Swift style and conventions"
+  project_indicators {
+    new { file = ".swiftlint.yml" }
+    new { file = ".swiftlint.yaml" }
+  }
+  mise_tools = List("swiftlint")
+}
+swiftlint = new Config.Step {
+  glob = "**/*.swift"
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("swiftlint", "lint", "{{files}}") }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command { argv = List("swiftlint", "--fix", "{{files}}") }
+    effect = "write"
+  }
+}

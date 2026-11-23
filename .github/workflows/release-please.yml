@@ -1,0 +1,29 @@
+name: release-please
+
+# One version for the whole repository (version.txt, CHANGELOG.md, tags vX.Y.Z).
+# Every push to main opens or updates a release PR; merging it creates the release.
+# The default GITHUB_TOKEN is used: the release PR and the tag don't trigger other workflows,
+# which is fine because the PR only changes version.txt and CHANGELOG.md, and merging it is a
+# regular push to main that runs project-check and hexlet-check.
+on:
+  # Manual run, e.g. to recreate the release PR without a new commit.
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  release-please:
+    name: Release PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: googleapis/release-please-action@v5
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json

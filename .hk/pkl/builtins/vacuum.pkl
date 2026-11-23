@@ -1,0 +1,27 @@
+import "../Builtins.pkl"
+import "../Config.pkl"
+
+@Builtins.meta {
+  category = "Other Languages"
+  description = "Fast OpenAPI linter"
+  mise_tools = List("vacuum")
+}
+vacuum = new Config.Step {
+  glob =
+    List(
+      "**/*openapi*.yaml",
+      "**/*openapi*.yml",
+      "**/*openapi*.json",
+      "**/*swagger*.yaml",
+      "**/*swagger*.yml",
+      "**/*swagger*.json",
+    )
+  check = new Config.CommandSpec {
+    command = new Config.Command { argv = List("vacuum", "lint", "{{files}}") }
+    effect = "read"
+  }
+  fix = new Config.CommandSpec {
+    command = new Config.Command { argv = List("vacuum", "lint", "--fix", "{{files}}") }
+    effect = "write"
+  }
+}
