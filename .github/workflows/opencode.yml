@@ -1,0 +1,246 @@
+name: opencode
+
+# OpenCode agent triggered by `/oc` or `/opencode` in a comment.
+# Docs: https://opencode.ai/docs/github/
+# Auth: OpenCode GitHub App via OIDC (app must be installed on the repository:
+# https://github.com/apps/opencode-agent). The app token is used to comment and push.
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions: {}
+
+jobs:
+  gate:
+    name: Check author and command
+    # Cheap pre-filter without a runner: no bots, repository owner only (personal repository),
+    # command mentioned.
+    if: >-
+      github.event.comment.user.type != 'Bot' &&
+      !endsWith(github.event.comment.user.login, '[bot]') &&
+      github.event.comment.author_association == 'OWNER' &&
+      (contains(github.event.comment.body, '/oc') || contains(github.event.comment.body, '/opencode'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
+    steps:
+      - name: Verify command and pull request origin
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_PR_URL: ${{ github.event.issue.pull_request.url }}
+          REVIEW_PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+        run: |
+          set -euo pipefail
+          allowed=false
+
+          # Drop Markdown that must not trigger the agent (CommonMark rules, POSIX awk only):
+          # - fenced code: ``` or ~~~ (3+), indented up to 3 columns; closed only by the same
+          #   character with at least the same length and nothing else on the line;
+          #   an unclosed fence runs to the end of the comment;
+          # - indented code: 4+ columns, not directly after a paragraph line;
+          # - block quotes, including lazy continuation lines of a quoted paragraph;
+          # - HTML <pre> blocks up to the line containing </pre>;
+          # - HTML comments <!-- ... --> (also <!--> and <!--->), multi-line or unclosed
+          #   (an unclosed comment hides the rest of the comment body);
+          # - list items: indentation is measured from the item content (stack of content
+          #   columns), so the rules above also work inside lists and on the marker line.
+          # Then look for the command as a separate word ("/octopus" does not match),
+          # optionally followed by punctuation ("/oc, fix").
+          command_text="$(printf '%s\n' "$COMMENT_BODY" | awk '
+            function split_indent(s, start,   i, ch) {
+              col = start
+              for (i = 1; i <= length(s); i++) {
+                ch = substr(s, i, 1)
+                if (ch == " ") col++
+                else if (ch == "\t") col += 4 - col % 4
+                else break
+              }
+              rest = substr(s, i)
+            }
+            function run_of(s, ch,   n) {
+              n = 0
+              while (substr(s, n + 1, 1) == ch) n++
+              return n
+            }
+            function list_marker(s,   c) {
+              c = substr(s, 1, 1)
+              if (c == "-" || c == "+" || c == "*") mlen = 1
+              else if (match(s, /^[0-9]+[.)]/) && RLENGTH <= 10) mlen = RLENGTH
+              else return 0
+              c = substr(s, mlen + 1, 1)
+              return c == "" || c == " " || c == "\t"
+            }
+            function starts_block(s,   c) {
+              c = substr(s, 1, 1)
+              return list_marker(s) || c == ">" || ((c == "`" || c == "~") && run_of(s, c) >= 3)
+            }
+            # Removes HTML comments from text; in_comment carries an open comment across lines.
+            function strip_comments(s,   out, p) {
+              out = ""
+              while (1) {
+                if (in_comment) {
+                  p = index(s, "-->")
+                  if (!p) return out
+                  s = substr(s, p + 3); in_comment = 0
+                }
+                p = index(s, "<!--")
+                if (!p) return out s
+                out = out substr(s, 1, p - 1)
+                s = substr(s, p + 4); in_comment = 1
+                if (substr(s, 1, 1) == ">") { s = substr(s, 2); in_comment = 0 }
+                else if (substr(s, 1, 2) == "->") { s = substr(s, 3); in_comment = 0 }
+              }
+            }
+            function emit(line,   s) {
+              s = strip_comments(line)
+              if (s ~ /[^ \t]/) print s
+            }
+            {
+              sub(/\r$/, "")
+              # Inside an open HTML comment nothing is Markdown; only text after --> is visible.
+              if (in_comment) {
+                emit($0)
+                para = 0
+                next
+              }
+              split_indent($0, 0)
+              blank = (rest == "")
+
+              # Open blocks end at their closing line or when a line leaves their list item.
+              if (html) {
+                if (blank || col >= html_base) {
+                  if (index(tolower(rest), "</pre>")) html = 0
+                  para = 0
+                  next
+                }
+                html = 0
+              }
+              if (fence_len) {
+                if (blank || col >= fence_base) {
+                  if (!blank && col - fence_base < 4 && substr(rest, 1, 1) == fence_char) {
+                    n = run_of(rest, fence_char)
+                    if (n >= fence_len && substr(rest, n + 1) ~ /^[ \t]*$/) fence_len = 0
+                  }
+                  para = 0
+                  next
+                }
+                fence_len = 0
+              }
+              if (blank) { quote = 0; para = 0; next }
+
+              # A line below the item content leaves the item, unless it lazily continues
+              # a paragraph.
+              if (depth && col < item[depth]) {
+                if (para && !starts_block(rest)) { emit($0); next }
+                while (depth && col < item[depth]) depth--
+              }
+              base = depth ? item[depth] : 0
+              ecol = col - base
+
+              # New list items: 1-4 spaces after the marker set the content column;
+              # 5+ spaces mean the item starts with indented code.
+              while (ecol < 4 && list_marker(rest)) {
+                mend = col + mlen
+                split_indent(substr(rest, mlen + 1), mend)
+                item[++depth] = (rest == "" || col - mend > 4) ? mend + 1 : col
+                base = item[depth]; ecol = col - base
+                quote = 0; para = 0; code = 0
+                if (rest == "") next
+              }
+
+              if (code && ecol >= 4) next
+              code = 0
+
+              if (ecol < 4 && substr(rest, 1, 1) == ">") {
+                quote = (substr(rest, 2) !~ /^[ \t]*$/)
+                para = 0
+                next
+              }
+              ch = substr(rest, 1, 1)
+              if (ecol < 4 && (ch == "`" || ch == "~")) {
+                n = run_of(rest, ch)
+                if (n >= 3 && !(ch == "`" && index(substr(rest, n + 1), "`"))) {
+                  fence_char = ch; fence_len = n; fence_base = base; quote = 0; para = 0
+                  next
+                }
+              }
+              ch = substr(rest, 5, 1)
+              if (ecol < 4 && tolower(substr(rest, 1, 4)) == "<pre" && (ch == "" || ch == " " || ch == "\t" || ch == ">")) {
+                html = !index(tolower(rest), "</pre>"); html_base = base; quote = 0; para = 0
+                next
+              }
+              if (quote) next
+              if (ecol >= 4 && !para) { code = 1; next }
+
+              # A line starting with <!-- is an HTML block, not paragraph text.
+              emit($0)
+              para = !(ecol < 4 && substr(rest, 1, 4) == "<!--")
+            }
+          ')"
+          if ! printf '%s\n' "$command_text" | grep -Eiq '(^|[[:space:]])/(oc|opencode)([[:space:],.:;!?)]|$)'; then
+            echo "No /oc or /opencode command in the comment."
+          else
+            head_repo="$GITHUB_REPOSITORY"
+            if [ "$EVENT_NAME" = "pull_request_review_comment" ]; then
+              head_repo="$REVIEW_PR_HEAD_REPO"
+            elif [ -n "$ISSUE_PR_URL" ]; then
+              head_repo="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$ISSUE_NUMBER" --jq '.head.repo.full_name // ""')"
+            fi
+
+            # Fork PRs are refused: the agent would check out and run fork code while holding
+            # the OpenCode App token (write access, obtained via OIDC) in its git config.
+            if [ "$head_repo" = "$GITHUB_REPOSITORY" ]; then
+              allowed=true
+            else
+              echo "::notice::Pull request from '${head_repo:-deleted fork}' is not handled by the agent."
+            fi
+          fi
+
+          echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+
+  opencode:
+    name: Run OpenCode
+    needs: gate
+    if: needs.gate.outputs.allowed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: opencode-${{ github.event.issue.number || github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Tools and dependencies so the agent can run the project commands from AGENTS.md
+      # (`mise run check` and friends).
+      - name: Install project tools
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+
+      - name: Install dependencies
+        run: |
+          npm ci --prefix contracts
+          npm ci --prefix frontend
+
+      - name: Run OpenCode
+        # v1.19.6; the `latest` tag points to an older revision of the action.
+        uses: anomalyco/opencode/github@f4e363c8295fa90a03dddc451882fffe8fbce357
+        # Free OpenCode model: without OPENCODE_API_KEY the provider keeps only free models
+        # and uses the public key, so no secret is required.
+        with:
+          model: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4.1-flash-free' }}
