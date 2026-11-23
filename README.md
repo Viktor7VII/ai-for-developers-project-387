@@ -202,6 +202,22 @@ docker run -p 8080:8080 -e PORT=8080 call-calendar
 2. Задайте переменную окружения `RENDER_API_KEY` в своей системе (не в файлах репозитория).
 3. Перезапустите Claude Code в каталоге проекта и разрешите сервер `render` из `.mcp.json`.
 
+## Работа с GitHub Agent
+
+В репозитории настроен агент [OpenCode](https://opencode.ai/docs/github/) (workflow `.github/workflows/opencode.yml`). Он запускается в GitHub Actions по комментарию с командой `/oc` или `/opencode`:
+
+- в issue — например, `/oc объясни эту задачу` или `/opencode предложи исправление`; агент отвечает комментарием или открывает Pull Request с изменениями;
+- в Pull Request — общий комментарий или комментарий к строкам кода на вкладке Files changed, например `/oc добавь обработку ошибок здесь`.
+
+Правила запуска:
+
+- Команда пишется отдельным словом; после неё можно ставить знак препинания (`/oc, исправь тест`). Команды внутри цитат, блоков кода, `<pre>` и HTML-комментариев не учитываются.
+- Агента может вызвать только владелец репозитория; комментарии ботов игнорируются.
+- Pull Request из форков агент не обрабатывает.
+- Агент читает `AGENTS.md` и скиллы из `.claude/skills/`. По issue он создаёт отдельную ветку, в Pull Request коммитит в его ветку; в `main` изменения попадают только через Pull Request (ветка защищена).
+
+Для работы на репозиторий должно быть установлено приложение [OpenCode GitHub App](https://github.com/apps/opencode-agent). По умолчанию используется бесплатная модель `opencode/deepseek-v4.1-flash-free`, API-ключи не нужны; другую модель можно задать переменной репозитория `OPENCODE_MODEL` (Settings → Secrets and variables → Actions → Variables).
+
 ## Релизы
 
 Версии выпускаются через [release-please](https://github.com/googleapis/release-please): одна версия на весь репозиторий (`version.txt`), общий `CHANGELOG.md` и теги `vX.Y.Z`, первая версия — 0.1.0. После каждого push в `main` workflow `release-please` открывает или обновляет release PR со списком изменений из Conventional Commits; релиз и тег создаются, когда этот PR сливают. Для работы в настройках репозитория должно быть включено Settings → Actions → General → «Allow GitHub Actions to create and approve pull requests».
