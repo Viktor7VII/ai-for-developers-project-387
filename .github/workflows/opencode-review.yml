@@ -172,7 +172,11 @@ jobs:
             exit 1
           fi
           # Review = text of the answer only (last marked block, else the whole answer); fails when empty.
-          if ! node "$GITHUB_WORKSPACE/limit/.github/scripts/review-output.mjs" "$RUNNER_TEMP/review-events.jsonl" \
+          # Absolute paths: the step runs in "pr". The default-branch copy (checkout "limit") is used;
+          # only until the script reaches the default branch, the pull request's own copy is taken.
+          script="$GITHUB_WORKSPACE/limit/.github/scripts/review-output.mjs"
+          [ -f "$script" ] || script="$GITHUB_WORKSPACE/pr/.github/scripts/review-output.mjs"
+          if ! node "$script" "$RUNNER_TEMP/review-events.jsonl" \
               > "$RUNNER_TEMP/review.md" 2> "$RUNNER_TEMP/review-error.txt"; then
             echo "::error::$(cat "$RUNNER_TEMP/review-error.txt")"
             tail -n 50 "$RUNNER_TEMP/opencode.log"
