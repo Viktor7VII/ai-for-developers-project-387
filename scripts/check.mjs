@@ -67,6 +67,27 @@ function checkGeneratedFiles() {
   }
 }
 
+// Bash tests of the agent run limit GitHub action. On Windows the bash of Git for Windows is used:
+// `bash` on PATH may be the WSL launcher.
+function runAgentRunLimitTests() {
+  console.log('\n========== Agent run limit tests ==========\n')
+  let bash = 'bash'
+  if (isWindows) {
+    const execPath = spawnSync('git', ['--exec-path'], { encoding: 'utf8' }).stdout?.trim()
+    if (execPath) {
+      // <Git>/mingw64/libexec/git-core -> <Git>/bin/bash.exe
+      bash = resolve(execPath, '..', '..', '..', 'bin', 'bash.exe')
+    }
+  }
+  const result = spawnSync(bash, ['scripts/agent-run-limit.test.sh'], { cwd: root, stdio: 'inherit' })
+  if (result.error) {
+    console.error(result.error)
+  }
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1)
+  }
+}
+
 const command = process.argv[2] ?? 'check'
 
 generate()
@@ -77,6 +98,8 @@ if (command === 'generate') {
 }
 
 checkGeneratedFiles()
+
+runAgentRunLimitTests()
 
 run('Backend tests', mvn, ['test'], backend)
 
