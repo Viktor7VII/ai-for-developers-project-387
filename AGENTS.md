@@ -103,10 +103,11 @@ This command performs:
 1. TypeSpec compilation.
 2. TypeScript SDK generation.
 3. Agent run limit action tests (`scripts/agent-run-limit.test.sh`, bash with a fake GitHub API; on Windows the bash of Git for Windows).
-4. Backend tests.
-5. Frontend tests.
-6. Frontend Oxlint.
-7. Frontend production build.
+4. PR auto-review output extraction tests (`.github/scripts/review-output.test.mjs`).
+5. Backend tests.
+6. Frontend tests.
+7. Frontend Oxlint.
+8. Frontend production build.
 
 Run backend tests separately:
 
