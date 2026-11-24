@@ -64,6 +64,10 @@ export interface GuestBooking {
      * 
      */
     createdAt: Date;
+    /**
+     * Topic given by the guest when booking. Null or absent when the guest gave no topic.
+     */
+    topic?: string;
 }
 
 
@@ -103,6 +107,7 @@ export function GuestBookingFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'endAt': (json['endAt'] == null ? json['endAt'] : parseDateTime(json['endAt'])),
         'status': BookingStatusFromJSON(json['status']),
         'createdAt': (json['createdAt'] == null ? json['createdAt'] : parseDateTime(json['createdAt'])),
+        'topic': json['topic'] == null ? undefined : json['topic'],
     };
 }
 
@@ -126,6 +131,7 @@ export function GuestBookingToJSONTyped(value?: GuestBooking | null, ignoreDiscr
         'endAt': value['endAt'] == null ? value['endAt'] : serializeDateTime(value['endAt']),
         'status': BookingStatusToJSON(value['status']),
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'topic': value['topic'],
     };
 }
 

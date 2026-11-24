@@ -182,6 +182,12 @@ model BookingRequest {
   @maxLength(320)
   @pattern("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$")
   guestEmail: string;
+
+  @doc("""
+    Optional topic the guest wants to discuss; may span several lines. Leading and trailing whitespace
+    is trimmed; an empty or blank value means no topic. Cannot be changed after the booking is created.
+    """)
+  topic?: string;
 }
 
 @doc("A confirmed meeting booked by a visitor, as shown in the owner area.")
@@ -195,6 +201,10 @@ model Booking {
   endAt: utcDateTime;
   status: BookingStatus;
   createdAt: utcDateTime;
+
+  @doc("Topic given by the guest when booking. Null or absent when the guest gave no topic.")
+  @maxLength(1000)
+  topic?: string;
 
   @doc("Owner note to the booking. Never shown to guests. Null or absent when the booking has no note.")
   @maxLength(1000)
@@ -224,6 +234,10 @@ model GuestBooking {
   endAt: utcDateTime;
   status: BookingStatus;
   createdAt: utcDateTime;
+
+  @doc("Topic given by the guest when booking. Null or absent when the guest gave no topic.")
+  @maxLength(1000)
+  topic?: string;
 }
 
 @doc("Public endpoints used by visitors without registration.")

@@ -395,6 +395,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        topic:
+          type: string
+          maxLength: 1000
+          description: Topic given by the guest when booking. Null or absent when the guest gave no topic.
         note:
           type: string
           maxLength: 1000
@@ -433,6 +437,11 @@ components:
           minLength: 3
           maxLength: 320
           pattern: ^[^@\s]+@[^@\s]+\.[^@\s]+$
+        topic:
+          type: string
+          description: |-
+            Optional topic the guest wants to discuss; may span several lines. Leading and trailing whitespace
+            is trimmed; an empty or blank value means no topic. Cannot be changed after the booking is created.
       description: Data entered by a visitor to book a time slot.
     BookingStatus:
       type: string
@@ -554,6 +563,10 @@ components:
         createdAt:
           type: string
           format: date-time
+        topic:
+          type: string
+          maxLength: 1000
+          description: Topic given by the guest when booking. Null or absent when the guest gave no topic.
       description: |-
         A confirmed meeting as returned to the guest who booked it.
         Kept separate from the owner model so that owner-only booking data never reaches guests.

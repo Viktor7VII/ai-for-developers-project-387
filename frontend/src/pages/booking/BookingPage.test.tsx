@@ -90,6 +90,107 @@ describe('BookingPage', () => {
     })
     expect(screen.getByText('16 ноября 2026, понедельник')).toBeInTheDocument()
     expect(screen.getByText('Иван Петров, ivan@example.com')).toBeInTheDocument()
+    expect(screen.queryByText('Тема разговора')).not.toBeInTheDocument()
+  })
+
+  it('books with a topic and shows it in the confirmation', async () => {
+    publicBookingApi.publicBookingCreateBooking.mockResolvedValue({
+      id: 10,
+      eventTypeId: 1,
+      eventTypeTitle: 'Консультация',
+      guestName: 'Иван Петров',
+      guestEmail: 'ivan@example.com',
+      startAt: SLOTS[1].startAt,
+      endAt: SLOTS[1].endAt,
+      status: 'CONFIRMED',
+      createdAt: NOW,
+      topic: 'Бюджет\nСроки',
+    })
+    const { user } = renderApp('/book/consultation')
+
+    await user.click(await screen.findByRole('button', { name: '09:30' }))
+    await user.type(screen.getByLabelText(/Имя/), 'Иван Петров')
+    await user.type(screen.getByLabelText(/Email/), 'ivan@example.com')
+    await user.type(screen.getByLabelText(/Тема разговора/), ' Бюджет{Enter}Сроки ')
+    await user.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    expect(await screen.findByRole('heading', { name: 'Запись подтверждена' })).toBeInTheDocument()
+    // The raw topic is sent; the server trims it.
+    expect(publicBookingApi.publicBookingCreateBooking).toHaveBeenCalledWith({
+      slug: 'consultation',
+      bookingRequest: {
+        startAt: SLOTS[1].startAt,
+        guestName: 'Иван Петров',
+        guestEmail: 'ivan@example.com',
+        topic: ' Бюджет\nСроки ',
+      },
+    })
+    expect(screen.getByText('Тема разговора')).toBeInTheDocument()
+    expect(screen.getByText(/Бюджет\s+Сроки/)).toHaveStyle({ whiteSpace: 'pre-line' })
+  })
+
+  it('counts topic characters and does not send a too long topic', async () => {
+    const { user } = renderApp('/book/consultation')
+
+    await user.click(await screen.findByRole('button', { name: '09:30' }))
+    await user.type(screen.getByLabelText(/Имя/), 'Иван Петров')
+    await user.type(screen.getByLabelText(/Email/), 'ivan@example.com')
+    const topic = screen.getByLabelText(/Тема разговора/)
+    expect(screen.getByText(/0 \/ 1000/)).toBeInTheDocument()
+    await user.type(topic, '  Бюджет ')
+    expect(screen.getByText(/6 \/ 1000/)).toBeInTheDocument()
+
+    await user.clear(topic)
+    await user.click(topic)
+    await user.paste('a'.repeat(1001))
+    await user.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    expect(await screen.findByText('Не больше 1000 символов')).toBeInTheDocument()
+    expect(publicBookingApi.publicBookingCreateBooking).not.toHaveBeenCalled()
+  })
+
+  it('keeps the entered data and topic when the server rejects the booking', async () => {
+    publicBookingApi.publicBookingCreateBooking.mockRejectedValue(
+      apiError(400, 'Topic must be at most 1000 characters after trimming'),
+    )
+    const { user } = renderApp('/book/consultation')
+
+    await user.click(await screen.findByRole('button', { name: '09:30' }))
+    await user.type(screen.getByLabelText(/Имя/), 'Иван Петров')
+    await user.type(screen.getByLabelText(/Email/), 'ivan@example.com')
+    await user.type(screen.getByLabelText(/Тема разговора/), 'Бюджет{Enter}Сроки')
+    await user.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    expect(await screen.findByText('Не удалось записаться')).toBeInTheDocument()
+    expect(screen.getByText('Topic must be at most 1000 characters after trimming')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Имя/)).toHaveValue('Иван Петров')
+    expect(screen.getByLabelText(/Email/)).toHaveValue('ivan@example.com')
+    expect(screen.getByLabelText(/Тема разговора/)).toHaveValue('Бюджет\nСроки')
+  })
+
+  it('does not send a blank topic', async () => {
+    publicBookingApi.publicBookingCreateBooking.mockResolvedValue({
+      id: 10,
+      eventTypeId: 1,
+      eventTypeTitle: 'Консультация',
+      guestName: 'Иван Петров',
+      guestEmail: 'ivan@example.com',
+      startAt: SLOTS[1].startAt,
+      endAt: SLOTS[1].endAt,
+      status: 'CONFIRMED',
+      createdAt: NOW,
+    })
+    const { user } = renderApp('/book/consultation')
+
+    await user.click(await screen.findByRole('button', { name: '09:30' }))
+    await user.type(screen.getByLabelText(/Имя/), 'Иван Петров')
+    await user.type(screen.getByLabelText(/Email/), 'ivan@example.com')
+    await user.type(screen.getByLabelText(/Тема разговора/), '   ')
+    await user.click(screen.getByRole('button', { name: 'Записаться' }))
+
+    expect(await screen.findByRole('heading', { name: 'Запись подтверждена' })).toBeInTheDocument()
+    const [[request]] = publicBookingApi.publicBookingCreateBooking.mock.calls
+    expect(request.bookingRequest.topic).toBeUndefined()
   })
 
   it('validates guest data', async () => {

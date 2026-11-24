@@ -31,6 +31,11 @@ export interface BookingRequest {
      * 
      */
     guestEmail: string;
+    /**
+     * Optional topic the guest wants to discuss; may span several lines. Leading and trailing whitespace
+     * is trimmed; an empty or blank value means no topic. Cannot be changed after the booking is created.
+     */
+    topic?: string;
 }
 
 /**
@@ -56,6 +61,7 @@ export function BookingRequestFromJSONTyped(json: any, ignoreDiscriminator: bool
         'startAt': (json['startAt'] == null ? json['startAt'] : parseDateTime(json['startAt'])),
         'guestName': json['guestName'],
         'guestEmail': json['guestEmail'],
+        'topic': json['topic'] == null ? undefined : json['topic'],
     };
 }
 
@@ -73,6 +79,7 @@ export function BookingRequestToJSONTyped(value?: BookingRequest | null, ignoreD
         'startAt': value['startAt'] == null ? value['startAt'] : serializeDateTime(value['startAt']),
         'guestName': value['guestName'],
         'guestEmail': value['guestEmail'],
+        'topic': value['topic'],
     };
 }
 

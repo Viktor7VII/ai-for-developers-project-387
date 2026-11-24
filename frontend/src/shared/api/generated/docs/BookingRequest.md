@@ -10,6 +10,7 @@ Name | Type
 `startAt` | Date
 `guestName` | string
 `guestEmail` | string
+`topic` | string
 
 ## Example
 
@@ -21,6 +22,7 @@ const example = {
   "startAt": null,
   "guestName": null,
   "guestEmail": null,
+  "topic": null,
 } satisfies BookingRequest
 
 console.log(example)

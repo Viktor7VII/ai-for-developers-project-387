@@ -34,6 +34,9 @@ public class Booking {
 	/** Maximum owner note length after trimming. */
 	public static final int NOTE_MAX_LENGTH = 1000;
 
+	/** Maximum guest topic length after trimming. */
+	public static final int TOPIC_MAX_LENGTH = 1000;
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -61,6 +64,10 @@ public class Booking {
 	@Column(nullable = false)
 	private Instant createdAt;
 
+	/** Topic given by the guest when booking; set only on creation, null when there is no topic. */
+	@Column(length = TOPIC_MAX_LENGTH)
+	private String topic;
+
 	/** Owner note, never shown to guests; null when the booking has no note. */
 	@Column(length = NOTE_MAX_LENGTH)
 	private String note;
@@ -70,6 +77,11 @@ public class Booking {
 
 	public Booking(EventType eventType, String guestName, String guestEmail,
 			Instant startAt, Instant endAt, Instant createdAt) {
+		this(eventType, guestName, guestEmail, startAt, endAt, createdAt, null);
+	}
+
+	public Booking(EventType eventType, String guestName, String guestEmail,
+			Instant startAt, Instant endAt, Instant createdAt, String topic) {
 		this.eventType = eventType;
 		this.guestName = guestName;
 		this.guestEmail = guestEmail;
@@ -77,6 +89,7 @@ public class Booking {
 		this.endAt = endAt;
 		this.status = BookingStatus.CONFIRMED;
 		this.createdAt = createdAt;
+		this.topic = topic;
 	}
 
 	public Long getId() {
@@ -109,6 +122,10 @@ public class Booking {
 
 	public Instant getCreatedAt() {
 		return createdAt;
+	}
+
+	public String getTopic() {
+		return topic;
 	}
 
 	public String getNote() {

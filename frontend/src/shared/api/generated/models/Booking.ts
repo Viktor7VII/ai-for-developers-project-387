@@ -64,6 +64,10 @@ export interface Booking {
      */
     createdAt: Date;
     /**
+     * Topic given by the guest when booking. Null or absent when the guest gave no topic.
+     */
+    topic?: string;
+    /**
      * Owner note to the booking. Never shown to guests. Null or absent when the booking has no note.
      */
     note?: string;
@@ -106,6 +110,7 @@ export function BookingFromJSONTyped(json: any, ignoreDiscriminator: boolean): B
         'endAt': (json['endAt'] == null ? json['endAt'] : parseDateTime(json['endAt'])),
         'status': BookingStatusFromJSON(json['status']),
         'createdAt': (json['createdAt'] == null ? json['createdAt'] : parseDateTime(json['createdAt'])),
+        'topic': json['topic'] == null ? undefined : json['topic'],
         'note': json['note'] == null ? undefined : json['note'],
     };
 }
@@ -130,6 +135,7 @@ export function BookingToJSONTyped(value?: Booking | null, ignoreDiscriminator: 
         'endAt': value['endAt'] == null ? value['endAt'] : serializeDateTime(value['endAt']),
         'status': BookingStatusToJSON(value['status']),
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'topic': value['topic'],
         'note': value['note'],
     };
 }

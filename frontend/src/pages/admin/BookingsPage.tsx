@@ -1,6 +1,18 @@
-import { Alert, Badge, Button, Loader, Stack, Table, Text, Title, VisuallyHidden } from '@mantine/core'
+import {
+  Alert,
+  Badge,
+  Button,
+  Loader,
+  Stack,
+  Table,
+  Text,
+  Title,
+  UnstyledButton,
+  VisuallyHidden,
+} from '@mantine/core'
 import { useEffect, useState } from 'react'
 import { BookingNoteModal } from '../../features/booking-note/BookingNoteModal'
+import { BookingTopicModal } from '../../features/booking-topic/BookingTopicModal'
 import { bookingsApi } from '../../shared/api/client'
 import { type Booking, BookingStatus } from '../../shared/api/generated'
 import { browserTimeZone, formatShortDate, formatTime } from '../../shared/lib/datetime'
@@ -13,11 +25,12 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
 interface BookingsTableProps {
   bookings: Booking[]
   onEditNote: (booking: Booking) => void
+  onShowTopic: (booking: Booking) => void
 }
 
-function BookingsTable({ bookings, onEditNote }: BookingsTableProps) {
+function BookingsTable({ bookings, onEditNote, onShowTopic }: BookingsTableProps) {
   return (
-    <Table.ScrollContainer minWidth={860}>
+    <Table.ScrollContainer minWidth={1000}>
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -27,6 +40,7 @@ function BookingsTable({ bookings, onEditNote }: BookingsTableProps) {
             <Table.Th>Гость</Table.Th>
             <Table.Th>Email</Table.Th>
             <Table.Th>Статус</Table.Th>
+            <Table.Th>Тема</Table.Th>
             <Table.Th>Заметка</Table.Th>
             <Table.Th>
               <VisuallyHidden>Действия</VisuallyHidden>
@@ -47,6 +61,19 @@ function BookingsTable({ bookings, onEditNote }: BookingsTableProps) {
                 <Badge color="teal" variant="light">
                   {STATUS_LABELS[booking.status]}
                 </Badge>
+              </Table.Td>
+              <Table.Td>
+                {booking.topic && (
+                  // Long topics are clamped to two lines; the full text opens in a read-only modal.
+                  <UnstyledButton
+                    aria-label={`Показать тему разговора: ${booking.guestName}, ${formatShortDate(booking.startAt)} ${formatTime(booking.startAt)}`}
+                    onClick={() => onShowTopic(booking)}
+                  >
+                    <Text size="sm" lineClamp={2} maw={280} style={{ overflowWrap: 'anywhere' }}>
+                      {booking.topic}
+                    </Text>
+                  </UnstyledButton>
+                )}
               </Table.Td>
               <Table.Td>
                 {booking.note && (
@@ -81,6 +108,7 @@ export function BookingsPage() {
   // Captured once per page visit, so the split into upcoming/past is stable between renders.
   const [now] = useState(() => Date.now())
   const [noteBooking, setNoteBooking] = useState<Booking | null>(null)
+  const [topicBooking, setTopicBooking] = useState<Booking | null>(null)
 
   const handleNoteSaved = (saved: Booking) => {
     setBookings((current) => current?.map((booking) => (booking.id === saved.id ? saved : booking)) ?? null)
@@ -121,17 +149,18 @@ export function BookingsPage() {
       {upcoming.length === 0 ? (
         <Text c="dimmed">Предстоящих записей нет.</Text>
       ) : (
-        <BookingsTable bookings={upcoming} onEditNote={setNoteBooking} />
+        <BookingsTable bookings={upcoming} onEditNote={setNoteBooking} onShowTopic={setTopicBooking} />
       )}
 
       {past.length > 0 && (
         <>
           <Title order={4}>Прошедшие</Title>
-          <BookingsTable bookings={past} onEditNote={setNoteBooking} />
+          <BookingsTable bookings={past} onEditNote={setNoteBooking} onShowTopic={setTopicBooking} />
         </>
       )}
 
       <BookingNoteModal booking={noteBooking} onClose={() => setNoteBooking(null)} onSaved={handleNoteSaved} />
+      <BookingTopicModal booking={topicBooking} onClose={() => setTopicBooking(null)} />
     </Stack>
   )
 }

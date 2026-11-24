@@ -12,6 +12,7 @@ import {
   SimpleGrid,
   Stack,
   Text,
+  Textarea,
   TextInput,
   Title,
 } from '@mantine/core'
@@ -32,6 +33,9 @@ import {
 import { getErrorMessage, isResponseStatus } from '../../shared/lib/errors'
 
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
+
+/** Maximum topic length after trimming, as checked by the server. */
+const TOPIC_MAX_LENGTH = 1000
 
 type LoadState<T> =
   | { status: 'loading' }
@@ -273,10 +277,11 @@ function GuestForm({ eventType, slot, onBack, onBooked, onConflict }: GuestFormP
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const form = useForm({
-    initialValues: { guestName: '', guestEmail: '' },
+    initialValues: { guestName: '', guestEmail: '', topic: '' },
     validate: {
       guestName: (value) => (value.trim() ? null : 'Введите имя'),
       guestEmail: (value) => (EMAIL_PATTERN.test(value.trim()) ? null : 'Введите корректный email'),
+      topic: (value) => (value.trim().length > TOPIC_MAX_LENGTH ? `Не больше ${TOPIC_MAX_LENGTH} символов` : null),
     },
   })
 
@@ -290,6 +295,8 @@ function GuestForm({ eventType, slot, onBack, onBooked, onConflict }: GuestFormP
           startAt: slot.startAt,
           guestName: values.guestName.trim(),
           guestEmail: values.guestEmail.trim(),
+          // The server trims the topic; a blank topic is not sent at all.
+          topic: values.topic.trim() ? values.topic : undefined,
         },
       })
       onBooked(booking)
@@ -328,6 +335,14 @@ function GuestForm({ eventType, slot, onBack, onBooked, onConflict }: GuestFormP
           required
           {...form.getInputProps('guestEmail')}
         />
+        <Textarea
+          label="Тема разговора"
+          description={`Необязательно: что вы хотите обсудить · ${form.values.topic.trim().length} / ${TOPIC_MAX_LENGTH}`}
+          autosize
+          minRows={2}
+          maxRows={8}
+          {...form.getInputProps('topic')}
+        />
         <Group justify="space-between">
           <Button variant="default" onClick={onBack}>
             Назад
@@ -359,6 +374,12 @@ function Confirmation({ booking, onBookAgain }: { booking: GuestBooking; onBookA
           {booking.guestName}, {booking.guestEmail}
         </Text>
       </Stack>
+      {booking.topic && (
+        <Stack gap={4}>
+          <Text fw={600}>Тема разговора</Text>
+          <Text style={{ whiteSpace: 'pre-line' }}>{booking.topic}</Text>
+        </Stack>
+      )}
       <Button variant="light" w="fit-content" onClick={onBookAgain}>
         Записаться ещё раз
       </Button>
