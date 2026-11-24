@@ -10,7 +10,7 @@ import { getErrorMessage } from '../../shared/lib/errors'
 const NOTE_MAX_LENGTH = 1000
 
 interface BookingNoteModalProps {
-  /** Booking to add a note to; null when the modal is closed. */
+  /** Booking whose note is added, changed or removed; null when the modal is closed. */
   booking: Booking | null
   onClose: () => void
   onSaved: (booking: Booking) => void
@@ -34,13 +34,15 @@ interface BookingNoteFormProps {
 function BookingNoteForm({ booking, onCancel, onSaved }: BookingNoteFormProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // An existing note is edited with its full text; saving it empty removes it.
+  const editing = Boolean(booking.note)
 
   const form = useForm({
-    initialValues: { note: '' },
+    initialValues: { note: booking.note ?? '' },
     validate: {
       note: (value) => {
         const length = value.trim().length
-        if (length === 0) {
+        if (length === 0 && !editing) {
           return 'Введите заметку'
         }
         return length > NOTE_MAX_LENGTH ? `Не больше ${NOTE_MAX_LENGTH} символов` : null
@@ -48,11 +50,11 @@ function BookingNoteForm({ booking, onCancel, onSaved }: BookingNoteFormProps) {
     },
   })
 
-  const handleSubmit = async ({ note }: { note: string }) => {
+  const save = async (note: string) => {
     setSubmitting(true)
     setError(null)
     try {
-      // The server trims the note and checks its length again.
+      // The server trims the note and checks its length again; an empty note removes it.
       onSaved(await bookingsApi.bookingsSetNote({ id: booking.id, bookingNoteInput: { note } }))
     } catch (e) {
       setError(await getErrorMessage(e))
@@ -60,6 +62,8 @@ function BookingNoteForm({ booking, onCancel, onSaved }: BookingNoteFormProps) {
       setSubmitting(false)
     }
   }
+
+  const handleSubmit = ({ note }: { note: string }) => save(note)
 
   return (
     <form onSubmit={form.onSubmit(handleSubmit)} noValidate>
@@ -84,6 +88,11 @@ function BookingNoteForm({ booking, onCancel, onSaved }: BookingNoteFormProps) {
           {...form.getInputProps('note')}
         />
         <Group justify="flex-end">
+          {editing && (
+            <Button variant="subtle" color="red" mr="auto" disabled={submitting} onClick={() => save('')}>
+              Удалить заметку
+            </Button>
+          )}
           <Button variant="default" onClick={onCancel}>
             Отмена
           </Button>

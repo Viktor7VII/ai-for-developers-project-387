@@ -153,6 +153,38 @@ class BookingNoteTests {
 	}
 
 	@Test
+	void ownerChangesExistingNote() throws Exception {
+		long id = book("2026-11-16T09:00:00Z");
+		setNote(id, "Прежняя заметка").andExpect(status().isOk());
+
+		setNote(id, "  Новая заметка ")
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.note").value("Новая заметка"));
+
+		mockMvc.perform(get("/api/bookings"))
+				.andExpect(jsonPath("$[0].note").value("Новая заметка"));
+	}
+
+	@Test
+	void emptyOrBlankNoteRemovesTheNote() throws Exception {
+		long first = book("2026-11-16T09:00:00Z");
+		long second = book("2026-11-16T09:30:00Z");
+		setNote(first, "Удалить пустой строкой").andExpect(status().isOk());
+		setNote(second, "Удалить пробелами").andExpect(status().isOk());
+
+		setNote(first, "")
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.note").doesNotExist());
+		setNote(second, " \n\t ")
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.note").doesNotExist());
+
+		mockMvc.perform(get("/api/bookings"))
+				.andExpect(jsonPath("$[0].note").doesNotExist())
+				.andExpect(jsonPath("$[1].note").doesNotExist());
+	}
+
+	@Test
 	void returnsNotFoundForUnknownBooking() throws Exception {
 		setNote(999_999, "Заметка")
 				.andExpect(status().isNotFound())

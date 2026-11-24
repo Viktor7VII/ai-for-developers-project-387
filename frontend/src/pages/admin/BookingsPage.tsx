@@ -12,10 +12,10 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
 
 interface BookingsTableProps {
   bookings: Booking[]
-  onAddNote: (booking: Booking) => void
+  onEditNote: (booking: Booking) => void
 }
 
-function BookingsTable({ bookings, onAddNote }: BookingsTableProps) {
+function BookingsTable({ bookings, onEditNote }: BookingsTableProps) {
   return (
     <Table.ScrollContainer minWidth={860}>
       <Table striped highlightOnHover>
@@ -48,19 +48,24 @@ function BookingsTable({ bookings, onAddNote }: BookingsTableProps) {
                   {STATUS_LABELS[booking.status]}
                 </Badge>
               </Table.Td>
-              <Table.Td>{booking.note}</Table.Td>
               <Table.Td>
-                {!booking.note && (
-                  <Button
-                    size="xs"
-                    variant="default"
-                    // Unique accessible name: every row has the same visible button text.
-                    aria-label={`Добавить заметку: ${booking.guestName}, ${formatShortDate(booking.startAt)} ${formatTime(booking.startAt)}`}
-                    onClick={() => onAddNote(booking)}
-                  >
-                    Добавить заметку
-                  </Button>
+                {booking.note && (
+                  // Long notes are clamped to two lines; the full text is shown in the edit modal.
+                  <Text size="sm" lineClamp={2} maw={280} style={{ overflowWrap: 'anywhere' }}>
+                    {booking.note}
+                  </Text>
                 )}
+              </Table.Td>
+              <Table.Td>
+                <Button
+                  size="xs"
+                  variant="default"
+                  // Unique accessible name: every row has the same visible button text.
+                  aria-label={`${booking.note ? 'Изменить' : 'Добавить'} заметку: ${booking.guestName}, ${formatShortDate(booking.startAt)} ${formatTime(booking.startAt)}`}
+                  onClick={() => onEditNote(booking)}
+                >
+                  {booking.note ? 'Изменить заметку' : 'Добавить заметку'}
+                </Button>
               </Table.Td>
             </Table.Tr>
           ))}
@@ -116,13 +121,13 @@ export function BookingsPage() {
       {upcoming.length === 0 ? (
         <Text c="dimmed">Предстоящих записей нет.</Text>
       ) : (
-        <BookingsTable bookings={upcoming} onAddNote={setNoteBooking} />
+        <BookingsTable bookings={upcoming} onEditNote={setNoteBooking} />
       )}
 
       {past.length > 0 && (
         <>
           <Title order={4}>Прошедшие</Title>
-          <BookingsTable bookings={past} onAddNote={setNoteBooking} />
+          <BookingsTable bookings={past} onEditNote={setNoteBooking} />
         </>
       )}
 
