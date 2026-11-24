@@ -16,6 +16,7 @@ Name | Type
 `endAt` | Date
 `status` | [BookingStatus](BookingStatus.md)
 `createdAt` | Date
+`topic` | string
 
 ## Example
 
@@ -33,6 +34,7 @@ const example = {
   "endAt": null,
   "status": null,
   "createdAt": null,
+  "topic": null,
 } satisfies GuestBooking
 
 console.log(example)

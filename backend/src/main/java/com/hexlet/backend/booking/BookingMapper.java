@@ -21,6 +21,7 @@ final class BookingMapper {
 				.endAt(utc(booking.getEndAt()))
 				.status(com.hexlet.backend.api.model.BookingStatus.fromValue(booking.getStatus().name()))
 				.createdAt(utc(booking.getCreatedAt()))
+				.topic(booking.getTopic())
 				.note(booking.getNote());
 	}
 
@@ -35,7 +36,8 @@ final class BookingMapper {
 				.startAt(utc(booking.getStartAt()))
 				.endAt(utc(booking.getEndAt()))
 				.status(com.hexlet.backend.api.model.BookingStatus.fromValue(booking.getStatus().name()))
-				.createdAt(utc(booking.getCreatedAt()));
+				.createdAt(utc(booking.getCreatedAt()))
+				.topic(booking.getTopic());
 	}
 
 	static com.hexlet.backend.api.model.TimeSlot toDto(TimeSlot slot) {

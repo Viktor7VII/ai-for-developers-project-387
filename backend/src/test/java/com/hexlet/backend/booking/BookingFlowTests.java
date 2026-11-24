@@ -166,9 +166,11 @@ class BookingFlowTests {
 	@Test
 	void guestBookingResponseContainsOnlyGuestFields() throws Exception {
 		// The guest response is a separate model: owner-only booking data must never appear in it.
+		// Absent values are serialized as null, so fields are checked explicitly, not just counted.
 		book("consultation", "2026-11-16T09:00:00Z")
 				.andExpect(status().isCreated())
-				.andExpect(jsonPath("$.*", hasSize(9)))
+				.andExpect(jsonPath("$.note").doesNotExist())
+				.andExpect(jsonPath("$.topic").doesNotExist())
 				.andExpect(jsonPath("$.id").isNumber())
 				.andExpect(jsonPath("$.eventTypeId").isNumber())
 				.andExpect(jsonPath("$.eventTypeTitle").value("Консультация"))

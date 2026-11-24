@@ -39,8 +39,8 @@ public class PublicBookingController implements PublicBookingApi {
 	@Override
 	public ResponseEntity<com.hexlet.backend.api.model.GuestBooking> publicBookingCreateBooking(
 			String slug, BookingRequest request) {
-		Booking booking = bookingService.create(
-				slug, request.getStartAt().toInstant(), request.getGuestName(), request.getGuestEmail());
+		Booking booking = bookingService.create(slug, request.getStartAt().toInstant(),
+				request.getGuestName(), request.getGuestEmail(), request.getTopic());
 		return ResponseEntity.status(HttpStatus.CREATED).body(BookingMapper.toGuestDto(booking));
 	}
 }

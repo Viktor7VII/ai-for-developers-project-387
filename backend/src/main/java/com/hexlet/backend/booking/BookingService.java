@@ -57,8 +57,22 @@ public class BookingService {
 	}
 
 	public Booking create(String slug, Instant startAt, String guestName, String guestEmail) {
-		return bookingLock.runLocked(() ->
-				transactionTemplate.execute(status -> createInTransaction(slug, startAt, guestName, guestEmail)));
+		return create(slug, startAt, guestName, guestEmail, null);
+	}
+
+	/**
+	 * Creates a booking; the optional guest topic is trimmed, a blank topic means "no topic". The topic
+	 * length is checked before availability, so a too long topic is a 400 even for a taken slot and never
+	 * takes the slot.
+	 */
+	public Booking create(String slug, Instant startAt, String guestName, String guestEmail, String topic) {
+		String normalizedTopic = normalizeTopic(topic);
+		if (normalizedTopic != null && normalizedTopic.length() > Booking.TOPIC_MAX_LENGTH) {
+			throw new BadRequestException(
+					"Topic must be at most " + Booking.TOPIC_MAX_LENGTH + " characters after trimming");
+		}
+		return bookingLock.runLocked(() -> transactionTemplate.execute(
+				status -> createInTransaction(slug, startAt, guestName, guestEmail, normalizedTopic)));
 	}
 
 	@Transactional(readOnly = true)
@@ -83,7 +97,15 @@ public class BookingService {
 		return booking;
 	}
 
-	private Booking createInTransaction(String slug, Instant startAt, String guestName, String guestEmail) {
+	private static String normalizeTopic(String topic) {
+		if (topic == null || topic.isBlank()) {
+			return null;
+		}
+		return topic.strip();
+	}
+
+	private Booking createInTransaction(
+			String slug, Instant startAt, String guestName, String guestEmail, String topic) {
 		EventType eventType = eventTypeService.findBySlug(slug);
 		// Re-checks the booking window, slot grid, schedule and overlaps with all bookings.
 		if (!slotService.isFree(eventType, startAt)) {
@@ -96,7 +118,8 @@ public class BookingService {
 				startAt,
 				startAt.plus(Duration.ofMinutes(eventType.getDurationMinutes())),
 				// Millisecond precision: same value in the response and in the database, and JS-friendly.
-				clock.instant().truncatedTo(ChronoUnit.MILLIS)
+				clock.instant().truncatedTo(ChronoUnit.MILLIS),
+				topic
 		);
 		return bookingRepository.saveAndFlush(booking);
 	}

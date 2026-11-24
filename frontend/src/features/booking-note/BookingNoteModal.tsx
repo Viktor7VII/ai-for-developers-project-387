@@ -80,7 +80,7 @@ function BookingNoteForm({ booking, onCancel, onSaved }: BookingNoteFormProps) {
         <Textarea
           label="Заметка"
           description={`${form.values.note.trim().length} / ${NOTE_MAX_LENGTH}`}
-          placeholder="Тема разговора, вопросы гостя, договорённости"
+          placeholder="Вопросы к разговору, договорённости"
           autosize
           minRows={3}
           maxRows={12}
