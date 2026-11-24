@@ -195,6 +195,19 @@ model Booking {
   endAt: utcDateTime;
   status: BookingStatus;
   createdAt: utcDateTime;
+
+  @doc("Owner note to the booking. Never shown to guests. Null or absent when the booking has no note.")
+  @maxLength(1000)
+  note?: string;
+}
+
+@doc("Owner note to set on a booking.")
+model BookingNoteInput {
+  @doc("""
+    Note text. Leading and trailing whitespace is trimmed;
+    at most 1000 characters after trimming. An empty or blank value means the booking has no note.
+    """)
+  note: string;
 }
 
 @doc("""
@@ -252,4 +265,12 @@ interface Bookings {
   @doc("List all bookings of the owner ordered by start time.")
   @get
   list(): Booking[];
+
+  @doc("""
+    Set the owner note of a booking, upcoming or past. Returns the updated booking.
+    400 if the note is longer than 1000 characters after trimming; the saved note is then unchanged.
+    """)
+  @route("/{id}/note")
+  @put
+  setNote(@path id: int64, @body body: BookingNoteInput): Booking | BadRequestError | NotFoundError;
 }

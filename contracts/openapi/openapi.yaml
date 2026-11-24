@@ -35,6 +35,46 @@ paths:
                   $ref: '#/components/schemas/Booking'
       tags:
         - Bookings
+  /api/bookings/{id}/note:
+    put:
+      operationId: Bookings_setNote
+      description: |-
+        Set the owner note of a booking, upcoming or past. Returns the updated booking.
+        400 if the note is longer than 1000 characters after trimming; the saved note is then unchanged.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: The request has succeeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Booking'
+        '400':
+          description: 'Bad request: validation failed.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Resource not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      tags:
+        - Bookings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookingNoteInput'
   /api/event-types:
     get:
       operationId: EventTypes_list
@@ -355,7 +395,22 @@ components:
         createdAt:
           type: string
           format: date-time
+        note:
+          type: string
+          maxLength: 1000
+          description: Owner note to the booking. Never shown to guests. Null or absent when the booking has no note.
       description: A confirmed meeting booked by a visitor, as shown in the owner area.
+    BookingNoteInput:
+      type: object
+      required:
+        - note
+      properties:
+        note:
+          type: string
+          description: |-
+            Note text. Leading and trailing whitespace is trimmed;
+            at most 1000 characters after trimming. An empty or blank value means the booking has no note.
+      description: Owner note to set on a booking.
     BookingRequest:
       type: object
       required:

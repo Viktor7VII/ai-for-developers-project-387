@@ -31,6 +31,9 @@ import jakarta.persistence.UniqueConstraint;
 )
 public class Booking {
 
+	/** Maximum owner note length after trimming. */
+	public static final int NOTE_MAX_LENGTH = 1000;
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -57,6 +60,10 @@ public class Booking {
 
 	@Column(nullable = false)
 	private Instant createdAt;
+
+	/** Owner note, never shown to guests; null when the booking has no note. */
+	@Column(length = NOTE_MAX_LENGTH)
+	private String note;
 
 	protected Booking() {
 	}
@@ -102,5 +109,14 @@ public class Booking {
 
 	public Instant getCreatedAt() {
 		return createdAt;
+	}
+
+	public String getNote() {
+		return note;
+	}
+
+	/** Sets the owner note; the other booking data never changes after creation. */
+	void changeNote(String note) {
+		this.note = note;
 	}
 }

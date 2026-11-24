@@ -20,7 +20,8 @@ final class BookingMapper {
 				.startAt(utc(booking.getStartAt()))
 				.endAt(utc(booking.getEndAt()))
 				.status(com.hexlet.backend.api.model.BookingStatus.fromValue(booking.getStatus().name()))
-				.createdAt(utc(booking.getCreatedAt()));
+				.createdAt(utc(booking.getCreatedAt()))
+				.note(booking.getNote());
 	}
 
 	/** Booking as returned to the guest: a separate model, so owner-only data is never exposed publicly. */

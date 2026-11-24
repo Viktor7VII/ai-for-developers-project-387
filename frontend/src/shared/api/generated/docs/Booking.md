@@ -16,6 +16,7 @@ Name | Type
 `endAt` | Date
 `status` | [BookingStatus](BookingStatus.md)
 `createdAt` | Date
+`note` | string
 
 ## Example
 
@@ -33,6 +34,7 @@ const example = {
   "endAt": null,
   "status": null,
   "createdAt": null,
+  "note": null,
 } satisfies Booking
 
 console.log(example)
