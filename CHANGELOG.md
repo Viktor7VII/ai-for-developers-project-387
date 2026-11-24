@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/Viktor7VII/ai-for-developers-project-387/compare/v0.1.0...v0.2.0) (2026-11-24)
+
+
+### Features
+
+* add owner notes to bookings ([0a51078](https://github.com/Viktor7VII/ai-for-developers-project-387/commit/0a51078b8f42501c471bf1786ef29ffdf5c5f5d2))
+* add owner notes to bookings ([dac51cc](https://github.com/Viktor7VII/ai-for-developers-project-387/commit/dac51cc89bba3ad7791f8f065fa448b958f822d4))
+
 ## 0.1.0 (2026-11-23)
 
 
