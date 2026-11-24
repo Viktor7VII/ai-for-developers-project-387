@@ -203,4 +203,91 @@ describe('BookingsPage', () => {
     expect(within(dialog).getByLabelText('Заметка')).toHaveValue('Обсудить бюджет')
     expect(noteCell(screen.getAllByRole('table')[0], rowOf(screen.getAllByRole('table')[0], 'Anna'))).toBeEmptyDOMElement()
   })
+
+  describe('existing note', () => {
+    const EDIT_NOTE_ANNA = 'Изменить заметку: Anna, 16.11.2026 09:00'
+
+    function withNote(note: string) {
+      return booking(2, '2026-11-16T09:00:00Z', '2026-11-16T09:30:00Z', 'Anna', note)
+    }
+
+    async function openEditModal(note: string) {
+      bookingsApi.bookingsList.mockResolvedValue([withNote(note)])
+      const { user } = renderApp('/admin/bookings')
+      const table = (await screen.findAllByRole('table'))[0]
+      await user.click(within(rowOf(table, 'Anna')).getByRole('button', { name: EDIT_NOTE_ANNA }))
+      const dialog = await screen.findByRole('dialog', { name: 'Заметка к записи' })
+      return { user, dialog, field: within(dialog).getByLabelText('Заметка') }
+    }
+
+    function annaNoteCell() {
+      const table = screen.getAllByRole('table')[0]
+      return noteCell(table, rowOf(table, 'Anna'))
+    }
+
+    it('changes the note in the modal that shows its full text', async () => {
+      bookingsApi.bookingsSetNote.mockResolvedValue(withNote('Новая заметка'))
+      const { user, dialog, field } = await openEditModal('Старая заметка')
+
+      expect(field).toHaveValue('Старая заметка')
+      await user.clear(field)
+      await user.type(field, 'Новая заметка')
+      await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
+
+      expect(bookingsApi.bookingsSetNote).toHaveBeenCalledWith({ id: 2, bookingNoteInput: { note: 'Новая заметка' } })
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(annaNoteCell()).toHaveTextContent('Новая заметка')
+    })
+
+    it('removes the note with the delete button', async () => {
+      bookingsApi.bookingsSetNote.mockResolvedValue(booking(2, '2026-11-16T09:00:00Z', '2026-11-16T09:30:00Z', 'Anna'))
+      const { user, dialog } = await openEditModal('Старая заметка')
+
+      await user.click(within(dialog).getByRole('button', { name: 'Удалить заметку' }))
+
+      expect(bookingsApi.bookingsSetNote).toHaveBeenCalledWith({ id: 2, bookingNoteInput: { note: '' } })
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(annaNoteCell()).toBeEmptyDOMElement()
+      expect(screen.getByRole('button', { name: ADD_NOTE_ANNA })).toBeInTheDocument()
+    })
+
+    it('removes the note when it is saved blank', async () => {
+      bookingsApi.bookingsSetNote.mockResolvedValue(booking(2, '2026-11-16T09:00:00Z', '2026-11-16T09:30:00Z', 'Anna'))
+      const { user, dialog, field } = await openEditModal('Старая заметка')
+
+      await user.clear(field)
+      await user.type(field, '   ')
+      await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
+
+      expect(within(dialog).queryByText('Введите заметку')).not.toBeInTheDocument()
+      expect(bookingsApi.bookingsSetNote).toHaveBeenCalledWith({ id: 2, bookingNoteInput: { note: '   ' } })
+      await waitFor(() => expect(annaNoteCell()).toBeEmptyDOMElement())
+    })
+
+    it('clamps a long note in the cell and shows the full text in the modal', async () => {
+      const longNote = 'Длинная заметка о встрече. '.repeat(30).trim()
+      const { field } = await openEditModal(longNote)
+
+      const clamped = within(annaNoteCell()).getByText(longNote)
+      expect(clamped).toHaveAttribute('data-line-clamp')
+      expect(clamped.style.getPropertyValue('--text-line-clamp')).toBe('2')
+      expect(field).toHaveValue(longNote)
+    })
+
+    it('shows a server error and keeps the entered text and the saved note', async () => {
+      bookingsApi.bookingsSetNote.mockRejectedValue(
+        apiError(400, 'Note must be at most 1000 characters after trimming'),
+      )
+      const { user, dialog, field } = await openEditModal('Старая заметка')
+
+      await user.clear(field)
+      await user.type(field, 'Новая заметка')
+      await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
+
+      expect(await within(dialog).findByText('Не удалось сохранить заметку')).toBeInTheDocument()
+      expect(within(dialog).getByText('Note must be at most 1000 characters after trimming')).toBeInTheDocument()
+      expect(field).toHaveValue('Новая заметка')
+      expect(annaNoteCell()).toHaveTextContent('Старая заметка')
+    })
+  })
 })
