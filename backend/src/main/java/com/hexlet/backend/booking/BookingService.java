@@ -6,8 +6,10 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
+import com.hexlet.backend.common.BadRequestException;
 import com.hexlet.backend.common.BookingLock;
 import com.hexlet.backend.common.ConflictException;
+import com.hexlet.backend.common.NotFoundException;
 import com.hexlet.backend.eventtype.EventType;
 import com.hexlet.backend.eventtype.EventTypeService;
 
@@ -62,6 +64,23 @@ public class BookingService {
 	@Transactional(readOnly = true)
 	public List<Booking> listAll() {
 		return bookingRepository.findAllWithEventTypeOrderByStartAt();
+	}
+
+	/**
+	 * Sets the owner note of a booking, upcoming or past. The note is trimmed; a blank note means
+	 * "no note". The note doesn't affect availability, so the booking lock (ADR-0002) isn't needed.
+	 */
+	@Transactional
+	public Booking updateNote(long id, String note) {
+		Booking booking = bookingRepository.findWithEventTypeById(id)
+				.orElseThrow(() -> new NotFoundException("Booking " + id + " not found"));
+		String normalized = note.strip();
+		if (normalized.length() > Booking.NOTE_MAX_LENGTH) {
+			throw new BadRequestException(
+					"Note must be at most " + Booking.NOTE_MAX_LENGTH + " characters after trimming");
+		}
+		booking.changeNote(normalized.isEmpty() ? null : normalized);
+		return booking;
 	}
 
 	private Booking createInTransaction(String slug, Instant startAt, String guestName, String guestEmail) {

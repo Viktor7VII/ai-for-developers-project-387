@@ -5,6 +5,7 @@ apis/PublicBookingApi.ts
 apis/ScheduleApi.ts
 apis/index.ts
 docs/Booking.md
+docs/BookingNoteInput.md
 docs/BookingRequest.md
 docs/BookingStatus.md
 docs/BookingsApi.md
@@ -23,6 +24,7 @@ docs/TimeSlot.md
 docs/WeeklyInterval.md
 index.ts
 models/Booking.ts
+models/BookingNoteInput.ts
 models/BookingRequest.ts
 models/BookingStatus.ts
 models/DayOfWeek.ts

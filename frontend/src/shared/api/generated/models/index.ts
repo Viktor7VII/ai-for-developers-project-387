@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './Booking';
+export * from './BookingNoteInput';
 export * from './BookingRequest';
 export * from './BookingStatus';
 export * from './DayOfWeek';

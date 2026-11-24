@@ -18,6 +18,27 @@ import {
     BookingFromJSON,
     BookingToJSON,
 } from '../models/Booking';
+import {
+    type BookingNoteInput,
+    BookingNoteInputFromJSON,
+    BookingNoteInputToJSON,
+} from '../models/BookingNoteInput';
+import {
+    type ErrorResponse,
+    ErrorResponseFromJSON,
+    ErrorResponseToJSON,
+} from '../models/ErrorResponse';
+
+export interface BookingsSetNoteRequest {
+    /**
+     * 
+     */
+    id: number;
+    /**
+     * 
+     */
+    bookingNoteInput: BookingNoteInput;
+}
 
 /**
  * 
@@ -58,6 +79,61 @@ export class BookingsApi extends runtime.BaseAPI {
      */
     async bookingsList(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<Booking>> {
         const response = await this.bookingsListRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for bookingsSetNote without sending the request
+     */
+    async bookingsSetNoteRequestOpts(requestParameters: BookingsSetNoteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['id'] == null) {
+            throw new runtime.RequiredError(
+                'id',
+                'Required parameter "id" was null or undefined when calling bookingsSetNote().'
+            );
+        }
+
+        if (requestParameters['bookingNoteInput'] == null) {
+            throw new runtime.RequiredError(
+                'bookingNoteInput',
+                'Required parameter "bookingNoteInput" was null or undefined when calling bookingsSetNote().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/api/bookings/{id}/note`;
+        urlPath = urlPath.replace('{id}', encodeURIComponent(String(requestParameters['id'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BookingNoteInputToJSON(requestParameters['bookingNoteInput']),
+        };
+    }
+
+    /**
+     * Set the owner note of a booking, upcoming or past. Returns the updated booking. 400 if the note is longer than 1000 characters after trimming; the saved note is then unchanged.
+     */
+    async bookingsSetNoteRaw(requestParameters: BookingsSetNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Booking>> {
+        const requestOptions = await this.bookingsSetNoteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BookingFromJSON(jsonValue));
+    }
+
+    /**
+     * Set the owner note of a booking, upcoming or past. Returns the updated booking. 400 if the note is longer than 1000 characters after trimming; the saved note is then unchanged.
+     */
+    async bookingsSetNote(requestParameters: BookingsSetNoteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Booking> {
+        const response = await this.bookingsSetNoteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

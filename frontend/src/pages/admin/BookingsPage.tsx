@@ -1,5 +1,6 @@
-import { Alert, Badge, Loader, Stack, Table, Text, Title } from '@mantine/core'
+import { Alert, Badge, Button, Loader, Stack, Table, Text, Title, VisuallyHidden } from '@mantine/core'
 import { useEffect, useState } from 'react'
+import { BookingNoteModal } from '../../features/booking-note/BookingNoteModal'
 import { bookingsApi } from '../../shared/api/client'
 import { type Booking, BookingStatus } from '../../shared/api/generated'
 import { browserTimeZone, formatShortDate, formatTime } from '../../shared/lib/datetime'
@@ -9,9 +10,14 @@ const STATUS_LABELS: Record<BookingStatus, string> = {
   [BookingStatus.Confirmed]: 'Подтверждена',
 }
 
-function BookingsTable({ bookings }: { bookings: Booking[] }) {
+interface BookingsTableProps {
+  bookings: Booking[]
+  onAddNote: (booking: Booking) => void
+}
+
+function BookingsTable({ bookings, onAddNote }: BookingsTableProps) {
   return (
-    <Table.ScrollContainer minWidth={640}>
+    <Table.ScrollContainer minWidth={860}>
       <Table striped highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -21,6 +27,10 @@ function BookingsTable({ bookings }: { bookings: Booking[] }) {
             <Table.Th>Гость</Table.Th>
             <Table.Th>Email</Table.Th>
             <Table.Th>Статус</Table.Th>
+            <Table.Th>Заметка</Table.Th>
+            <Table.Th>
+              <VisuallyHidden>Действия</VisuallyHidden>
+            </Table.Th>
           </Table.Tr>
         </Table.Thead>
         <Table.Tbody>
@@ -38,6 +48,20 @@ function BookingsTable({ bookings }: { bookings: Booking[] }) {
                   {STATUS_LABELS[booking.status]}
                 </Badge>
               </Table.Td>
+              <Table.Td>{booking.note}</Table.Td>
+              <Table.Td>
+                {!booking.note && (
+                  <Button
+                    size="xs"
+                    variant="default"
+                    // Unique accessible name: every row has the same visible button text.
+                    aria-label={`Добавить заметку: ${booking.guestName}, ${formatShortDate(booking.startAt)} ${formatTime(booking.startAt)}`}
+                    onClick={() => onAddNote(booking)}
+                  >
+                    Добавить заметку
+                  </Button>
+                )}
+              </Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>
@@ -51,6 +75,12 @@ export function BookingsPage() {
   const [error, setError] = useState<string | null>(null)
   // Captured once per page visit, so the split into upcoming/past is stable between renders.
   const [now] = useState(() => Date.now())
+  const [noteBooking, setNoteBooking] = useState<Booking | null>(null)
+
+  const handleNoteSaved = (saved: Booking) => {
+    setBookings((current) => current?.map((booking) => (booking.id === saved.id ? saved : booking)) ?? null)
+    setNoteBooking(null)
+  }
 
   useEffect(() => {
     bookingsApi
@@ -86,15 +116,17 @@ export function BookingsPage() {
       {upcoming.length === 0 ? (
         <Text c="dimmed">Предстоящих записей нет.</Text>
       ) : (
-        <BookingsTable bookings={upcoming} />
+        <BookingsTable bookings={upcoming} onAddNote={setNoteBooking} />
       )}
 
       {past.length > 0 && (
         <>
           <Title order={4}>Прошедшие</Title>
-          <BookingsTable bookings={past} />
+          <BookingsTable bookings={past} onAddNote={setNoteBooking} />
         </>
       )}
+
+      <BookingNoteModal booking={noteBooking} onClose={() => setNoteBooking(null)} onSaved={handleNoteSaved} />
     </Stack>
   )
 }
