@@ -40,6 +40,8 @@ Out of scope for now: guest accounts, owner login, calendar integrations, notifi
 - `scripts/check.mjs` — unified project check script.
 - `.github/workflows/project-check.yml` — project CI workflow.
 - `.github/workflows/hexlet-check.yml` — Hexlet-managed workflow; do not modify.
+- `.github/workflows/opencode.yml`, `.github/workflows/opencode-review.yml`, `.github/actions/agent-run-limit*/` — OpenCode agent on `/oc` comments, read-only PR auto-review and the per-PR agent run limit (see README).
+- `REVIEW.md` — pull request review criteria; `.github/pull_request_template.md` — PR description template.
 - `mise.toml` — tool versions and project tasks.
 - `mise.lock` — locked tool versions.
 - `hk.pkl` and `.hk/pkl/` — hk configuration and local Pkl dependencies.
@@ -100,10 +102,11 @@ This command performs:
 
 1. TypeSpec compilation.
 2. TypeScript SDK generation.
-3. Backend tests.
-4. Frontend tests.
-5. Frontend Oxlint.
-6. Frontend production build.
+3. Agent run limit action tests (`scripts/agent-run-limit.test.sh`, bash with a fake GitHub API; on Windows the bash of Git for Windows).
+4. Backend tests.
+5. Frontend tests.
+6. Frontend Oxlint.
+7. Frontend production build.
 
 Run backend tests separately:
 

@@ -1,3 +1,5 @@
 # Generated from the contract: always LF so regeneration on Windows does not look like a change.
 contracts/openapi/** text eol=lf
 frontend/src/shared/api/generated/** text eol=lf
+# Shell scripts run with bash also on Windows: keep LF.
+*.sh text eol=lf

@@ -1,4 +1,6 @@
 name: opencode
+# The run title carries the issue or PR number: the agent run limit finds runs of a pull request by it.
+run-name: "opencode · #${{ github.event.issue.number || github.event.pull_request.number }}"
 
 # OpenCode agent triggered by `/oc` or `/opencode` in a comment.
 # Docs: https://opencode.ai/docs/github/
@@ -29,6 +31,8 @@ jobs:
       pull-requests: read
     outputs:
       allowed: ${{ steps.check.outputs.allowed }}
+      # Set for pull requests only: they have a run limit, issues don't.
+      pr: ${{ steps.check.outputs.pr }}
     steps:
       - name: Verify command and pull request origin
         id: check
@@ -39,6 +43,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
           ISSUE_PR_URL: ${{ github.event.issue.pull_request.url }}
           REVIEW_PR_HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REVIEW_PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           allowed=false
@@ -207,20 +212,54 @@ jobs:
           fi
 
           echo "allowed=$allowed" >> "$GITHUB_OUTPUT"
+          # The per-PR run limit applies to pull requests only, not to issues.
+          if [ "$allowed" = true ] && { [ "$EVENT_NAME" = "pull_request_review_comment" ] || [ -n "$ISSUE_PR_URL" ]; }; then
+            echo "pr=${REVIEW_PR_NUMBER:-$ISSUE_NUMBER}" >> "$GITHUB_OUTPUT"
+          fi
 
   opencode:
     name: Run OpenCode
     needs: gate
     if: needs.gate.outputs.allowed == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    concurrency:
-      group: opencode-${{ github.event.issue.number || github.event.pull_request.number }}
-      cancel-in-progress: false
+    # Includes waiting for earlier /oc runs of the same pull request.
+    timeout-minutes: 45
+    # No GitHub concurrency group: a pending run would be replaced by the next one and the command lost.
+    # /oc runs of one pull request are queued by the run limit action instead (FIFO by job id).
     permissions:
+      actions: read
       contents: read
       id-token: write
+      pull-requests: read
+    outputs:
+      limited: ${{ steps.limit.outputs.allowed == 'false' }}
     steps:
+      # The limit is checked in this job, so a re-run of this job alone is checked again.
+      # The action always comes from the default branch and is removed before the agent's checkout.
+      - name: Checkout limit action
+        if: needs.gate.outputs.pr != ''
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: .agent-limit
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - name: Check agent run limit
+        id: limit
+        if: needs.gate.outputs.pr != ''
+        uses: ./.agent-limit/.github/actions/agent-run-limit
+        with:
+          pr-number: ${{ needs.gate.outputs.pr }}
+          job-name: Run OpenCode
+          wait-for-earlier: "true"
+          token: ${{ github.token }}
+
+      # Marks this job as having taken one of the pull request's agent runs.
+      - name: Reserve agent run
+        if: needs.gate.outputs.pr != ''
+        run: rm -rf .agent-limit
+
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
@@ -244,3 +283,26 @@ jobs:
         # and uses the public key, so no secret is required.
         with:
           model: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4.1-flash-free' }}
+
+  report-limit:
+    name: Report run limit
+    needs: [gate, opencode]
+    if: always() && needs.opencode.outputs.limited == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Checkout report action
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - uses: ./.github/actions/agent-run-limit-report
+        with:
+          pr-number: ${{ needs.gate.outputs.pr }}
+          kind: /oc
+          token: ${{ github.token }}
