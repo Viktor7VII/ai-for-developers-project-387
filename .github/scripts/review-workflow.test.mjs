@@ -12,6 +12,7 @@ const load = (file) => parse(readFileSync(resolve(root, file), 'utf8'))
 
 const review = load('.github/workflows/opencode-review.yml').jobs.review
 const oc = load('.github/workflows/opencode.yml').jobs.opencode
+const notReviewed = "steps.previous.outputs.reviewed != 'true'"
 const index = (steps, name) => {
   const i = steps.findIndex((step) => step.name === name)
   assert.notEqual(i, -1, `step "${name}" is missing`)
@@ -40,7 +41,34 @@ const checks = {
     assert.equal(review.steps[index(review.steps, 'Check agent run limit')].id, 'limit')
   },
   'review: publishing only after a successful review'() {
-    assert.equal(review.steps[index(review.steps, 'Publish review')].if, undefined)
+    // Without a status function GitHub keeps the implicit success().
+    const condition = review.steps[index(review.steps, 'Publish review')].if
+    assert.equal(condition, notReviewed)
+  },
+  'review: an already reviewed commit skips the limit, the model and publishing'() {
+    const first = index(review.steps, 'Check previous review')
+    assert.equal(first, 0)
+    assert.equal(review.steps[first].id, 'previous')
+    assert.match(review.steps[first].run, /GITHUB_RUN_ATTEMPT" = 1/)
+    for (const step of review.steps.slice(1)) {
+      if (step.name === 'Reserve agent run') continue
+      assert.equal(step.if, notReviewed, `step "${step.name}" runs for an already reviewed commit`)
+    }
+    // A skipped limit check never reserves a run.
+    assert.match(review.steps[index(review.steps, 'Reserve agent run')].if, /steps\.limit\.outcome == 'success'/)
+    const publish = review.steps[index(review.steps, 'Publish review')].run
+    assert.ok(publish.includes('<!-- opencode-review:$HEAD_SHA -->'))
+    assert.ok(review.steps[first].run.includes('<!-- opencode-review:$HEAD_SHA -->'))
+  },
+  'review: the prompt is built by the default-branch script before the model is called'() {
+    const prepare = index(review.steps, 'Prepare review prompt')
+    assert.ok(prepare < index(review.steps, 'Run review'))
+    assert.match(review.steps[prepare].run, /limit\/\.github\/scripts[\s\S]*prepare-review\.sh/)
+  },
+  'review: project instructions and skills are not loaded on top of the prompt'() {
+    const { env } = review.steps[index(review.steps, 'Run review')]
+    assert.equal(env.OPENCODE_DISABLE_PROJECT_CONFIG, '1')
+    assert.equal(env.OPENCODE_DISABLE_CLAUDE_CODE, '1')
   },
   'review: read-only OpenCode permissions'() {
     const { permissions } = JSON.parse(review.steps[index(review.steps, 'Run review')].env.OPENCODE_CONFIG_CONTENT)
