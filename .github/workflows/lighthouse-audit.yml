@@ -1,0 +1,181 @@
+name: lighthouse-audit
+
+# Daily Lighthouse audit of the deployed application (APP_URL repository variable). The full report is a
+# workflow artifact; an unavailable application or a failed Lighthouse run gives a failure report that is
+# published as well. .github/scripts/lighthouse-summary.mjs checks all Issues (also closed ones) for the
+# markers and plans the publications: a new Issue, a comment when something changed, or nothing. The
+# summary and the plan go to the OpenCode agent as its prompt; the agent writes the texts and publishes
+# them through the script's publish command, which adds the title, links and marker itself. Without
+# findings the result is "no findings". A manual run with "training" publishes an explicitly marked
+# training report with a training finding instead, without auditing the application. Reports are written
+# outside the checkout and never committed.
+
+on:
+  schedule:
+    - cron: "17 4 * * *" # once a day, 04:17 UTC
+  workflow_dispatch:
+    inputs:
+      training:
+        description: Учебный отчёт с учебной находкой (приложение не проверяется)
+        type: boolean
+        default: false
+
+permissions: {}
+
+# One audit at a time; a scheduled run does not cancel a manual one.
+concurrency:
+  group: lighthouse-audit
+  cancel-in-progress: false
+
+env:
+  LIGHTHOUSE_VERSION: 13.6.0
+  OPENCODE_VERSION: 1.19.6
+
+jobs:
+  audit:
+    name: Audit application
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # GITHUB_TOKEN only: reading the repository for the agent's checkout and writing Issues. No App token
+    # (OIDC) and no contents or pull request write access, so the agent cannot push or open pull requests.
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Check APP_URL
+        if: ${{ !inputs.training }}
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          if [[ ! "$APP_URL" =~ ^https?://[^[:space:]]+$ ]]; then
+            echo "::error::Set the APP_URL repository variable to the public URL of the application."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Install Node.js
+        uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          install_args: node
+
+      # Render's free tier sleeps after idle time: the first request may take up to a minute. An application
+      # that does not answer is a result of the audit, not a reason to stop: see "Run Lighthouse".
+      - name: Wake up application
+        id: wake
+        if: ${{ !inputs.training }}
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/lighthouse"
+          if curl -fsS -o /dev/null --retry 8 --retry-delay 15 --retry-all-errors --max-time 90 "$APP_URL" \
+            2> "$RUNNER_TEMP/lighthouse/wake-up.log"; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::$APP_URL does not answer: $(tail -n 1 "$RUNNER_TEMP/lighthouse/wake-up.log")"
+            echo "available=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Always leaves a report: the Lighthouse report, or a failure report when the application is
+      # unavailable or Lighthouse produced no report. The result is published either way.
+      - name: Run Lighthouse
+        if: ${{ !inputs.training }}
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          AVAILABLE: ${{ steps.wake.outputs.available }}
+        run: |
+          dir="$RUNNER_TEMP/lighthouse"
+          report="$dir/lighthouse.report.json"
+          summary=.github/scripts/lighthouse-summary.mjs
+          if [ "$AVAILABLE" != true ]; then
+            node "$summary" failure-report APP_UNAVAILABLE "$(tail -n 1 "$dir/wake-up.log")" "$report"
+            exit 0
+          fi
+          status=0
+          npx --yes "lighthouse@$LIGHTHOUSE_VERSION" "$APP_URL" --quiet \
+            --output=json --output=html --output-path="$dir/lighthouse" \
+            --chrome-flags="--headless=new --no-sandbox" 2> "$dir/lighthouse.log" || status=$?
+          # A missing, corrupted or unusable report becomes a LIGHTHOUSE_FAILED report (the original is kept
+          # as lighthouse.invalid.json), so a report is always uploaded and the result published.
+          node "$summary" ensure-report "$report" "$status" "$dir/lighthouse.log"
+
+      - name: Create training report
+        if: ${{ inputs.training }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/lighthouse"
+          node .github/scripts/lighthouse-summary.mjs training-report "$RUNNER_TEMP/lighthouse/lighthouse.report.json"
+
+      - name: Upload report
+        id: upload
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.training && 'lighthouse-training-report' || 'lighthouse-report' }}
+          path: ${{ runner.temp }}/lighthouse/
+          if-no-files-found: error
+          retention-days: 30
+
+      # Reads all Issues and their comments (GITHUB_TOKEN) and plans the publications (the duplicate check);
+      # an API error fails the step, so nothing is published rather than a duplicate.
+      - name: Prepare agent prompt
+        id: prompt
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MODE: ${{ inputs.training && 'training' || 'audit' }}
+          APP_URL: ${{ vars.APP_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          LIGHTHOUSE_PLAN: ${{ runner.temp }}/lighthouse-plan.json
+        run: |
+          set -euo pipefail
+          publications="$(node .github/scripts/lighthouse-summary.mjs prompt \
+            "$RUNNER_TEMP/lighthouse/lighthouse.report.json" "$RUNNER_TEMP/lighthouse-prompt.md")"
+          echo "Planned publications: $publications"
+          echo "publications=$publications" >> "$GITHUB_OUTPUT"
+          delimiter="PROMPT_$(openssl rand -hex 16)"
+          { echo "prompt<<$delimiter"; cat "$RUNNER_TEMP/lighthouse-prompt.md"; echo "$delimiter"; } >> "$GITHUB_OUTPUT"
+
+      # Nothing new since the last publications (see the step summary): the model is not called.
+      - name: Publish result with OpenCode
+        if: steps.prompt.outputs.publications != '0'
+        # v1.19.6, the same action as in opencode.yml. It has no version input: it restores ~/.opencode/bin
+        # from its cache (key: the latest release, shared with opencode.yml) and installs OpenCode only on a
+        # cache miss. VERSION makes that installation 1.19.6; a binary restored from the cache may be another
+        # 1.x release (the installer never installs 2.x), see "Check OpenCode version".
+        uses: anomalyco/opencode/github@f4e363c8295fa90a03dddc451882fffe8fbce357
+        env:
+          VERSION: ${{ env.OPENCODE_VERSION }}
+          # The job's GITHUB_TOKEN instead of the OpenCode App token, also for the publish command
+          # (Issues only, see job permissions).
+          GITHUB_TOKEN: ${{ github.token }}
+          LIGHTHOUSE_PLAN: ${{ runner.temp }}/lighthouse-plan.json
+          # The agent may read the checkout and publish only through the publish command, which adds the
+          # title, links and marker itself. No gh, file edits, other commands, network fetches, subagents or skills.
+          OPENCODE_CONFIG_CONTENT: >-
+            {"permission":{"*":"deny","read":"allow","glob":"allow","grep":"allow",
+            "bash":{"*":"deny","node .github/scripts/lighthouse-summary.mjs publish *":"allow"}}}
+        with:
+          # Free OpenCode model without a secret, as in opencode.yml.
+          model: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4.1-flash-free' }}
+          use_github_token: "true"
+          prompt: ${{ steps.prompt.outputs.prompt }}
+
+      # Detection, not enforcement: reports the OpenCode version the action actually ran.
+      - name: Check OpenCode version
+        if: always() && steps.prompt.outcome == 'success' && steps.prompt.outputs.publications != '0'
+        run: |
+          installed="$("$HOME/.opencode/bin/opencode" --version 2>/dev/null || echo "not installed")"
+          echo "OpenCode $installed (expected $OPENCODE_VERSION)"
+          if [ "$installed" != "$OPENCODE_VERSION" ]; then
+            echo "::warning::OpenCode $installed ran instead of $OPENCODE_VERSION (binary restored from the action's cache)."
+          fi
+
+      # Every planned item must be published; a missing one fails the run and is planned again next time.
+      - name: Check publications
+        if: always() && steps.prompt.outcome == 'success' && steps.prompt.outputs.publications != '0'
+        env:
+          LIGHTHOUSE_PLAN: ${{ runner.temp }}/lighthouse-plan.json
+        run: node .github/scripts/lighthouse-summary.mjs verify

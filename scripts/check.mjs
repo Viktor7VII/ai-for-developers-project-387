@@ -109,6 +109,8 @@ runBashTest('Run review tests', '.github/scripts/run-review.test.sh')
 
 run('Review workflow tests', 'node', ['.github/scripts/review-workflow.test.mjs'], root)
 
+run('Lighthouse audit tests', 'node', ['.github/scripts/lighthouse-audit.test.mjs'], root)
+
 run('Backend tests', mvn, ['test'], backend)
 
 run('Frontend tests', npm, ['test'], frontend)

@@ -46,3 +46,7 @@ e2e/playwright-report/
 
 # Written to the repo root by openapi-generator-cli when PWD points there (e.g. Git Bash); the real config is contracts/openapitools.json
 /openapitools.json
+
+# Lighthouse reports (the scheduled audit keeps them as workflow artifacts, never in Git)
+*.report.json
+*.report.html
