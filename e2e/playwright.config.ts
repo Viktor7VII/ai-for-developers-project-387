@@ -28,6 +28,10 @@ export default defineConfig({
       },
       timeout: 180_000,
       reuseExistingServer: !process.env.CI,
+      // Maven prints its errors to stdout, which Playwright drops by default: without it a failed start in
+      // CI shows only "Exit code: 1". Both streams go to the log, prefixed with [WebServer].
+      stdout: 'pipe',
+      stderr: 'pipe',
     },
     {
       // Vite dev server proxying /api to the backend above.
@@ -37,6 +41,8 @@ export default defineConfig({
       env: { BACKEND_URL: `http://localhost:${BACKEND_PORT}` },
       timeout: 120_000,
       reuseExistingServer: !process.env.CI,
+      stdout: 'pipe',
+      stderr: 'pipe',
     },
   ],
 })
