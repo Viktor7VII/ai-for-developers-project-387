@@ -3,7 +3,6 @@ import { defineConfig, devices } from '@playwright/test'
 // Dedicated ports so a running dev server (8080 / 5173) doesn't interfere.
 const BACKEND_PORT = 18080
 const FRONTEND_PORT = 15173
-const isWindows = process.platform === 'win32'
 
 export default defineConfig({
   testDir: './tests',
@@ -17,8 +16,10 @@ export default defineConfig({
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     {
-      // Real backend with a throwaway in-memory database.
-      command: isWindows ? '.\\mvnw.cmd -q spring-boot:run' : './mvnw -q spring-boot:run',
+      // Real backend with a throwaway in-memory database. Maven comes from mise (as in `mise run check`):
+      // the Maven Wrapper would download its own Maven distribution on every fresh CI runner, a
+      // single-attempt network step that made the browser scenario fail intermittently.
+      command: 'mvn -q spring-boot:run',
       cwd: '../backend',
       url: `http://localhost:${BACKEND_PORT}/actuator/health`,
       env: {
