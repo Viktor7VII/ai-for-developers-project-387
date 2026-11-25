@@ -40,7 +40,7 @@ Out of scope for now: guest accounts, owner login, calendar integrations, notifi
 - `scripts/check.mjs` — unified project check script.
 - `.github/workflows/project-check.yml` — project CI workflow.
 - `.github/workflows/hexlet-check.yml` — Hexlet-managed workflow; do not modify.
-- `.github/workflows/opencode.yml`, `.github/workflows/opencode-review.yml`, `.github/actions/agent-run-limit*/` — OpenCode agent on `/oc` comments, read-only PR auto-review and the per-PR agent run limit (see README).
+- `.github/workflows/opencode.yml`, `.github/workflows/opencode-review.yml`, `.github/actions/agent-run-limit*/`, `.github/scripts/` — OpenCode agent on `/oc` comments, read-only PR auto-review (OpenCode CLI 2.x) and the per-PR agent run limit (see README; the limit's guarantees and accepted race risk: ADR-0004).
 - `REVIEW.md` — pull request review criteria; `.github/pull_request_template.md` — PR description template.
 - `mise.toml` — tool versions and project tasks.
 - `mise.lock` — locked tool versions.
@@ -103,7 +103,7 @@ This command performs:
 1. TypeSpec compilation.
 2. TypeScript SDK generation.
 3. Agent run limit action tests (`scripts/agent-run-limit.test.sh`, bash with a fake GitHub API; on Windows the bash of Git for Windows).
-4. PR auto-review output extraction tests (`.github/scripts/review-output.test.mjs`).
+4. PR auto-review tests: output extraction (`.github/scripts/review-output.test.mjs`), the review run with a fake OpenCode (`.github/scripts/run-review.test.sh`) and the workflow structure the run limit relies on (`.github/scripts/review-workflow.test.mjs`).
 5. Backend tests.
 6. Frontend tests.
 7. Frontend Oxlint.

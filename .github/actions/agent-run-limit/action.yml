@@ -3,9 +3,12 @@ description: >-
   Allows at most max-runs OpenCode agent runs per pull request, checked inside the job that calls the
   model, before the model is called. The budget is read from the GitHub Actions job history of both agent
   workflows, which the agent can't change (its App has only actions:read): every earlier agent job whose
-  "Reserve agent run" step succeeded, or which may still reach it, takes one run. Jobs are ordered by id,
-  so concurrent jobs always agree and the limit can't be exceeded. Re-runs create new jobs and are counted
-  again; jobs cancelled or timed out after the reservation stay counted. A refused job fails.
+  "Reserve agent run" step succeeded, or which may still reach it, takes one run. Jobs are ordered by id:
+  a job counts every earlier job, so concurrent jobs agree as long as the API lists every earlier job.
+  The Actions API is not read-after-write consistent, so runs are listed without search-backed filters and
+  the budget is checked again after settle-seconds, still before the model is called. Re-runs create new
+  jobs and are counted again; jobs cancelled or timed out after the reservation stay counted. A refused
+  job fails.
 
 inputs:
   pr-number:
@@ -22,6 +25,10 @@ inputs:
     description: "'true' to wait until earlier /oc jobs of the pull request finish (FIFO, no lost commands)."
     required: false
     default: "false"
+  settle-seconds:
+    description: Pause before the second budget check, so earlier concurrent jobs become visible in the API.
+    required: false
+    default: "20"
   token:
     description: Token with actions:read and pull-requests:read (GITHUB_TOKEN).
     required: true
@@ -46,6 +53,7 @@ runs:
         JOB_NAME: ${{ inputs.job-name }}
         MAX_RUNS: ${{ inputs.max-runs }}
         WAIT: ${{ inputs.wait-for-earlier }}
+        SETTLE: ${{ inputs.settle-seconds }}
       run: |
         set -euo pipefail
         repo="$GITHUB_REPOSITORY"
@@ -53,17 +61,29 @@ runs:
         my_id="$(gh api "repos/$repo/actions/runs/$GITHUB_RUN_ID/attempts/$GITHUB_RUN_ATTEMPT/jobs?per_page=100" \
           --jq ".jobs[] | select(.name == \"$JOB_NAME\" and .status == \"in_progress\") | .id" | sed -n 1p)"
         [ -n "$my_id" ] || { echo "::error::Cannot find the current job '$JOB_NAME'."; exit 1; }
-        created="$(gh api "repos/$repo/pulls/$PR_NUMBER" --jq '.created_at[0:10]')"
+        created="$(gh api "repos/$repo/pulls/$PR_NUMBER" --jq '.created_at')"
 
         # Every API call must succeed: an incomplete history would undercount the budget,
         # so the helpers below fail on the first error instead of returning partial output.
 
         # Runs of the agent workflows for this pull request; run-name is "<workflow> · #<PR number>".
+        # No `created`/`status` filters: GitHub serves those from a search index that can lag behind new
+        # runs. Pages come newest first and stop at runs older than the pull request.
         pr_runs() {
-          local workflow
+          local workflow page lines
           for workflow in "$@"; do
-            gh api --paginate "repos/$repo/actions/workflows/$workflow/runs?per_page=100&created=%3E%3D$created" \
-              --jq ".workflow_runs[] | select(.display_title | endswith(\" · #$PR_NUMBER\")) | .id" || return 1
+            page=1
+            while :; do
+              lines="$(gh api "repos/$repo/actions/workflows/$workflow/runs?per_page=100&page=$page" \
+                --jq ".workflow_runs[] | [(.id | tostring), .created_at,
+                      (if (.display_title | endswith(\" · #$PR_NUMBER\")) then \"1\" else \"0\" end)] | join(\" \")")" \
+                || return 1
+              [ -n "$lines" ] || break
+              printf '%s\n' "$lines" | awk '$3 == "1" { print $1 }'
+              [ "$(printf '%s\n' "$lines" | wc -l)" -lt 100 ] && break
+              [[ "$(printf '%s\n' "$lines" | tail -n 1 | cut -d' ' -f2)" < "$created" ]] && break
+              page=$((page + 1))
+            done
           done
         }
 
@@ -77,26 +97,42 @@ runs:
           done
         }
 
-        # One line per earlier agent job: "<job id>|<job name>|<state>"; taken = reserved a run,
-        # pending = not finished and may still reserve one, free = never reserved. filter=all returns
-        # jobs of every run attempt (Re-run all / failed jobs); a job listed twice is counted once.
-        states="$(runs_jobs "
-          .jobs[] | select((.name == \"Run OpenCode\" or .name == \"Review pull request\") and .id < $my_id)
-          | ([.steps[]? | select(.name == \"Reserve agent run\")][0]) as \$reserve
-          | \"\(.id)|\" + .name + \"|\" + (if \$reserve.conclusion == \"success\" then \"taken\"
-              elif .status != \"completed\" and (\$reserve == null or \$reserve.status != \"completed\") then \"pending\"
-              else \"free\" end)" opencode.yml opencode-review.yml)" \
-          || { echo "::error::Cannot read the agent run history; the run is refused."; echo "allowed=false" >> "$GITHUB_OUTPUT"; exit 1; }
-
-        # Pending jobs count too: fail-closed when several jobs check the budget at the same time.
-        used="$(printf '%s\n' "$states" | sort -u | grep -cE '\|(taken|pending)$' || true)"
-        echo "used=$used" >> "$GITHUB_OUTPUT"
-        if [ "$used" -ge "$MAX_RUNS" ]; then
+        # Earlier agent jobs that took a run or still may take one. Per job: "<job id>|<job name>|<state>";
+        # taken = reserved a run, pending = not finished and may still reserve one (fail-closed for
+        # concurrent jobs), free = never reserved. filter=all returns jobs of every run attempt
+        # (Re-run all / failed jobs); a job listed twice is counted once.
+        count_used() {
+          local states
+          states="$(runs_jobs "
+            .jobs[] | select((.name == \"Run OpenCode\" or .name == \"Review pull request\") and .id < $my_id)
+            | ([.steps[]? | select(.name == \"Reserve agent run\")][0]) as \$reserve
+            | \"\(.id)|\" + .name + \"|\" + (if \$reserve.conclusion == \"success\" then \"taken\"
+                elif .status != \"completed\" and (\$reserve == null or \$reserve.status != \"completed\") then \"pending\"
+                else \"free\" end)" opencode.yml opencode-review.yml)" || return 1
+          printf '%s\n' "$states" | sort -u | grep -cE '\|(taken|pending)$' || true
+        }
+        refuse() {
+          echo "used=$1" >> "$GITHUB_OUTPUT"
           echo "allowed=false" >> "$GITHUB_OUTPUT"
-          echo "::error::Agent run limit reached for PR #$PR_NUMBER ($used of $MAX_RUNS); the model is not called."
-          echo "Лимит запусков агента исчерпан ($used из $MAX_RUNS) — модель не вызывалась." >> "$GITHUB_STEP_SUMMARY"
+          echo "::error::Agent run limit reached for PR #$PR_NUMBER ($1 of $MAX_RUNS); the model is not called."
+          echo "Лимит запусков агента исчерпан ($1 из $MAX_RUNS) — модель не вызывалась." >> "$GITHUB_STEP_SUMMARY"
           exit 1
-        fi
+        }
+        unreadable() {
+          echo "allowed=false" >> "$GITHUB_OUTPUT"
+          echo "::error::Cannot read the agent run history; the run is refused."
+          exit 1
+        }
+
+        used="$(count_used)" || unreadable
+        [ "$used" -lt "$MAX_RUNS" ] || refuse "$used"
+        # Second check after a pause: an earlier concurrent job created moments before this one may not
+        # be listed yet. Both checks happen before the model is called and before the reservation.
+        sleep "${SETTLE:-20}"
+        recheck="$(count_used)" || unreadable
+        [ "$recheck" -gt "$used" ] && used="$recheck"
+        [ "$used" -lt "$MAX_RUNS" ] || refuse "$used"
+        echo "used=$used" >> "$GITHUB_OUTPUT"
         echo "allowed=true" >> "$GITHUB_OUTPUT"
         echo "Запуск агента $((used + 1)) из $MAX_RUNS." >> "$GITHUB_STEP_SUMMARY"
 
