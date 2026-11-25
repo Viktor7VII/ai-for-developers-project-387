@@ -47,3 +47,5 @@
 - Коммиты — Conventional Commits со строками `Refs:` с полными URL Issues; без `#номеров` и ключевых слов закрытия в сообщениях коммитов.
 - Описание PR заполнено по шаблону: проверки, риск, откат.
 - `.github/workflows/hexlet-check.yml` не изменён; workflow используют минимальные права и закреплённые версии actions.
+- Новые зависимости добавлены только с явной причиной; версии инструментов — через mise (`mise.toml`, `mise.lock`).
+- `version.txt`, `CHANGELOG.md` и `.release-please-manifest.json` вручную не правятся — их ведёт release-please.

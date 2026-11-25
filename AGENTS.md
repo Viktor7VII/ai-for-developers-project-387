@@ -103,7 +103,7 @@ This command performs:
 1. TypeSpec compilation.
 2. TypeScript SDK generation.
 3. Agent run limit action tests (`scripts/agent-run-limit.test.sh`, bash with a fake GitHub API; on Windows the bash of Git for Windows).
-4. PR auto-review tests: output extraction (`.github/scripts/review-output.test.mjs`), the review run with a fake OpenCode (`.github/scripts/run-review.test.sh`) and the workflow structure the run limit relies on (`.github/scripts/review-workflow.test.mjs`).
+4. PR auto-review tests: output extraction (`.github/scripts/review-output.test.mjs`), prompt preparation (`.github/scripts/prepare-review.test.sh`), the review run with a fake OpenCode (`.github/scripts/run-review.test.sh`) and the workflow structure the run limit relies on (`.github/scripts/review-workflow.test.mjs`).
 5. Backend tests.
 6. Frontend tests.
 7. Frontend Oxlint.

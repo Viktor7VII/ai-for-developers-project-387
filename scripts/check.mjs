@@ -103,6 +103,8 @@ runBashTest('Agent run limit tests', 'scripts/agent-run-limit.test.sh')
 
 run('Review output tests', 'node', ['.github/scripts/review-output.test.mjs'], root)
 
+runBashTest('Prepare review tests', '.github/scripts/prepare-review.test.sh')
+
 runBashTest('Run review tests', '.github/scripts/run-review.test.sh')
 
 run('Review workflow tests', 'node', ['.github/scripts/review-workflow.test.mjs'], root)
