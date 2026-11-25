@@ -101,6 +101,8 @@ checkGeneratedFiles()
 
 runAgentRunLimitTests()
 
+run('Review output tests', 'node', ['.github/scripts/review-output.test.mjs'], root)
+
 run('Backend tests', mvn, ['test'], backend)
 
 run('Frontend tests', npm, ['test'], frontend)

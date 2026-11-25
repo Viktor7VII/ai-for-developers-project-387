@@ -44,13 +44,16 @@ jobs:
     outputs:
       limited: ${{ steps.limit.outputs.allowed == 'false' }}
     steps:
-      # The limit action always comes from the default branch, not from the pull request.
+      # The limit action and the review extraction script always come from the default branch,
+      # not from the pull request.
       - name: Checkout limit action
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           path: limit
-          sparse-checkout: .github/actions
+          sparse-checkout: |
+            .github/actions
+            .github/scripts
           persist-credentials: false
 
       - name: Check agent run limit
@@ -154,20 +157,37 @@ jobs:
           OPENCODE_PERMISSION: '{"*":"deny","read":"allow","glob":"allow","grep":"allow","list":"allow","external_directory":"deny"}'
         run: |
           set -euo pipefail
-          opencode run -m "$MODEL" "Выполни ревью по инструкции ниже." \
-            < "$RUNNER_TEMP/review-prompt.md" > "$RUNNER_TEMP/review-output.md"
+          # JSON events: the answer text is separated from tool output and errors. OpenCode's own
+          # diagnostics go to stderr and are kept for the log, never used as the review.
+          # Free-tier rate limits make OpenCode wait for the daily reset (Retry-After): stop well before
+          # the 20-minute job timeout so the cause is reported instead of the job being cancelled.
+          status=0
+          timeout 12m opencode run --format json -m "$MODEL" "Выполни ревью по инструкции ниже." \
+            < "$RUNNER_TEMP/review-prompt.md" > "$RUNNER_TEMP/review-events.jsonl" 2> "$RUNNER_TEMP/opencode.log" || status=$?
+          if [ "$status" -eq 124 ]; then
+            echo "::error::opencode run did not finish in 12 minutes (the free model may be rate limited until the daily reset)."
+          elif [ "$status" -ne 0 ]; then
+            echo "::error::opencode run failed with exit code $status."
+          fi
+          if [ "$status" -ne 0 ]; then
+            tail -n 50 "$RUNNER_TEMP/opencode.log"
+            exit 1
+          fi
           # The reviewer must not have changed anything.
           if [ -n "$(git status --porcelain)" ]; then
             echo "::error::The review changed files in the checkout."
             git status --porcelain
             exit 1
           fi
-          # Keep only the final review block; fall back to the whole answer.
-          awk '/===REVIEW-START===/ { buf = ""; on = 1; next } /===REVIEW-END===/ { on = 0; out = buf } on { buf = buf $0 "\n" } END { printf "%s", out }' \
-            "$RUNNER_TEMP/review-output.md" > "$RUNNER_TEMP/review.md"
-          [ -s "$RUNNER_TEMP/review.md" ] || cp "$RUNNER_TEMP/review-output.md" "$RUNNER_TEMP/review.md"
-          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/review.md"; then
-            echo "::error::The model returned an empty review."
+          # Review = text of the answer only (last marked block, else the whole answer); fails when empty.
+          # Absolute paths: the step runs in "pr". The default-branch copy (checkout "limit") is used;
+          # only until the script reaches the default branch, the pull request's own copy is taken.
+          script="$GITHUB_WORKSPACE/limit/.github/scripts/review-output.mjs"
+          [ -f "$script" ] || script="$GITHUB_WORKSPACE/pr/.github/scripts/review-output.mjs"
+          if ! node "$script" "$RUNNER_TEMP/review-events.jsonl" \
+              > "$RUNNER_TEMP/review.md" 2> "$RUNNER_TEMP/review-error.txt"; then
+            echo "::error::$(cat "$RUNNER_TEMP/review-error.txt")"
+            tail -n 50 "$RUNNER_TEMP/opencode.log"
             exit 1
           fi
 
