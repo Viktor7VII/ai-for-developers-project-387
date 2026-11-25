@@ -67,10 +67,10 @@ function checkGeneratedFiles() {
   }
 }
 
-// Bash tests of the agent run limit GitHub action. On Windows the bash of Git for Windows is used:
+// Bash tests of the agent GitHub workflows. On Windows the bash of Git for Windows is used:
 // `bash` on PATH may be the WSL launcher.
-function runAgentRunLimitTests() {
-  console.log('\n========== Agent run limit tests ==========\n')
+function runBashTest(label, script) {
+  console.log(`\n========== ${label} ==========\n`)
   let bash = 'bash'
   if (isWindows) {
     const execPath = spawnSync('git', ['--exec-path'], { encoding: 'utf8' }).stdout?.trim()
@@ -79,7 +79,7 @@ function runAgentRunLimitTests() {
       bash = resolve(execPath, '..', '..', '..', 'bin', 'bash.exe')
     }
   }
-  const result = spawnSync(bash, ['scripts/agent-run-limit.test.sh'], { cwd: root, stdio: 'inherit' })
+  const result = spawnSync(bash, [script], { cwd: root, stdio: 'inherit' })
   if (result.error) {
     console.error(result.error)
   }
@@ -99,7 +99,13 @@ if (command === 'generate') {
 
 checkGeneratedFiles()
 
-runAgentRunLimitTests()
+runBashTest('Agent run limit tests', 'scripts/agent-run-limit.test.sh')
+
+run('Review output tests', 'node', ['.github/scripts/review-output.test.mjs'], root)
+
+runBashTest('Run review tests', '.github/scripts/run-review.test.sh')
+
+run('Review workflow tests', 'node', ['.github/scripts/review-workflow.test.mjs'], root)
 
 run('Backend tests', mvn, ['test'], backend)
 

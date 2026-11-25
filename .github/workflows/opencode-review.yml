@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  OPENCODE_VERSION: 1.19.6
+  OPENCODE_VERSION: 2.4.1
 
 jobs:
   review:
@@ -44,13 +44,16 @@ jobs:
     outputs:
       limited: ${{ steps.limit.outputs.allowed == 'false' }}
     steps:
-      # The limit action always comes from the default branch, not from the pull request.
+      # The limit action and the review extraction script always come from the default branch,
+      # not from the pull request.
       - name: Checkout limit action
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event.repository.default_branch }}
           path: limit
-          sparse-checkout: .github/actions
+          sparse-checkout: |
+            .github/actions
+            .github/scripts
           persist-credentials: false
 
       - name: Check agent run limit
@@ -60,10 +63,6 @@ jobs:
           pr-number: ${{ github.event.pull_request.number }}
           job-name: Review pull request
           token: ${{ github.token }}
-
-      # Marks this job as having taken one of the pull request's agent runs.
-      - name: Reserve agent run
-        run: echo "Agent run reserved."
 
       - name: Checkout pull request head
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
@@ -142,34 +141,42 @@ jobs:
 
       - name: Install OpenCode
         run: |
-          curl -fsSL https://opencode.ai/install | bash -s -- --version "$OPENCODE_VERSION"
+          curl -fsSL https://opencode.ai/v2/install | bash -s -- --version "$OPENCODE_VERSION"
           echo "$HOME/.opencode/bin" >> "$GITHUB_PATH"
 
+      # The review run itself is the quota check: with an exhausted free quota OpenCode Zen refuses the
+      # request before the model runs (FreeUsageLimitError), OpenCode 2.x does not retry it and the
+      # script marks the run as quota-exceeded within seconds. No separate probe request is made.
       - name: Run review
+        id: review
         working-directory: pr
         env:
           MODEL: ${{ vars.OPENCODE_MODEL || 'opencode/deepseek-v4.1-flash-free' }}
-          # Read-only allowlist: only reading inside the checkout; no edits, shell, network or skills.
+          # Read-only allowlist (OpenCode 2.x rules, the last matching rule wins): only reading inside the
+          # checkout; no edits, shell, subagents, skills, network or files outside the repository.
           # No token is passed to this step and the checkout keeps no credentials.
-          OPENCODE_PERMISSION: '{"*":"deny","read":"allow","glob":"allow","grep":"allow","list":"allow","external_directory":"deny"}'
+          OPENCODE_CONFIG_CONTENT: >-
+            {"permissions":[
+            {"action":"*","resource":"*","effect":"deny"},
+            {"action":"read","resource":"*","effect":"allow"},
+            {"action":"glob","resource":"*","effect":"allow"},
+            {"action":"grep","resource":"*","effect":"allow"},
+            {"action":"external_directory","resource":"*","effect":"deny"}]}
         run: |
-          set -euo pipefail
-          opencode run -m "$MODEL" "Выполни ревью по инструкции ниже." \
-            < "$RUNNER_TEMP/review-prompt.md" > "$RUNNER_TEMP/review-output.md"
-          # The reviewer must not have changed anything.
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "::error::The review changed files in the checkout."
-            git status --porcelain
-            exit 1
-          fi
-          # Keep only the final review block; fall back to the whole answer.
-          awk '/===REVIEW-START===/ { buf = ""; on = 1; next } /===REVIEW-END===/ { on = 0; out = buf } on { buf = buf $0 "\n" } END { printf "%s", out }' \
-            "$RUNNER_TEMP/review-output.md" > "$RUNNER_TEMP/review.md"
-          [ -s "$RUNNER_TEMP/review.md" ] || cp "$RUNNER_TEMP/review-output.md" "$RUNNER_TEMP/review.md"
-          if ! grep -q '[^[:space:]]' "$RUNNER_TEMP/review.md"; then
-            echo "::error::The model returned an empty review."
-            exit 1
-          fi
+          # Absolute paths: the step runs in "pr". The default-branch copy (checkout "limit") is used;
+          # only until the scripts reach the default branch, the pull request's own copy is taken.
+          scripts="$GITHUB_WORKSPACE/limit/.github/scripts"
+          [ -f "$scripts/run-review.sh" ] || scripts="$GITHUB_WORKSPACE/pr/.github/scripts"
+          bash "$scripts/run-review.sh" "$RUNNER_TEMP/review-prompt.md" "$RUNNER_TEMP"
+
+      # Marks this job as having taken one of the pull request's agent runs. Recorded after the review
+      # (also when it failed, timed out or was cancelled by a newer push), except when the free quota
+      # was exhausted and the model never ran. While the review runs, the limit counts this job as pending.
+      - name: Reserve agent run
+        if: >-
+          always() && steps.limit.outcome == 'success' && steps.review.outcome != 'skipped' &&
+          steps.review.outputs.quota-exceeded != 'true'
+        run: echo "Agent run reserved."
 
       - name: Publish review
         env:
